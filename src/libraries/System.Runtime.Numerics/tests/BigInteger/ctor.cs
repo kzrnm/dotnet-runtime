@@ -943,6 +943,13 @@ namespace System.Numerics.Tests
                 }
                 VerifyCtorByteArray(tempByteArray);
             }
+        }
+
+        [Fact]
+        [OuterLoop]
+        public static void RunCtorLargeByteArrayTests()
+        {
+            byte[] tempByteArray;
 
             // ctor(byte[]): array is large
             for (int i = 0; i < s_samples; i++)
