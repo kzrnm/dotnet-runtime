@@ -65,6 +65,38 @@ namespace System.Numerics.Tests
         }
 
         [Fact]
+        public void RunPowerOf1E9ToStringTests()
+        {
+            foreach (var test in new[]
+            {
+                new string('9', 9* (1<<10))+new string('9', 9* (1<<10)),
+                "1"+new string('0', 9* (1<<10))+new string('9', 9* (1<<10)),
+                "1"+new string('0', 9* (1<<10)-1)+"1"+new string('9', 9* (1<<10)),
+                "1"+new string('0', 9* (1<<11)),
+                "1"+new string('0', 9* (1<<11)-1)+"1",
+            })
+            {
+                VerifyToString(test, test);
+            }
+        }
+
+        [Fact]
+        [OuterLoop]
+        public static void RunRepeatedCharsToStringTests()
+        {
+            string test;
+
+            for (int length = 1; length < 1300; length++)
+            {
+                test = new string('1', length);
+                VerifyToString(test, test);
+
+                test = new string('9', length);
+                VerifyToString(test, test);
+            }
+        }
+
+        [Fact]
         public static void RunProviderToStringTests()
         {
             NumberFormatInfo nfi = new NumberFormatInfo();
@@ -497,7 +529,7 @@ namespace System.Numerics.Tests
         {
             Assert.Throws<OverflowException>(() => BigInteger.Parse(testingValue, NumberStyles.AllowExponent));
         }
-        
+
         [Fact]
         public static void ToString_InvalidFormat_ThrowsFormatException()
         {
