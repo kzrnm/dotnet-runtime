@@ -890,42 +890,18 @@ namespace System
                 }
             }
 
-            // First convert to base 10^9.
-            int cuSrc = value._bits.Length;
-            // A quick conservative max length of base 10^9 representation
-            // A uint contributes to no more than 10/9 of 10^9 block, +1 for ceiling of division
-            int cuMax = cuSrc * (PowersOf1e9.MaxPartialDigits + 1) / PowersOf1e9.MaxPartialDigits + 1;
-            Debug.Assert((long)BigInteger.MaxLength * (PowersOf1e9.MaxPartialDigits + 1) / PowersOf1e9.MaxPartialDigits + 1 < (long)int.MaxValue); // won't overflow
+            // The Ratio is calculated as: log_{10^9}(2^32)
+            const double digitRatio = 1.0703288734719332;
 
-            uint[]? bufferToReturn = null;
-            Span<uint> base1E9Buffer = cuMax < BigIntegerCalculator.StackAllocThreshold ?
-                stackalloc uint[cuMax] :
-                (bufferToReturn = ArrayPool<uint>.Shared.Rent(cuMax));
+            int base1E9BufferLength = (int)(value._bits.Length * digitRatio) + 1;
+            Debug.Assert(BigInteger.MaxLength * digitRatio + 1 < Array.MaxLength); // won't overflow
 
-            int cuDst = 0;
+            uint[]? base1E9BufferFromPool = null;
+            Span<uint> base1E9Buffer = base1E9BufferLength < BigIntegerCalculator.StackAllocThreshold ?
+                stackalloc uint[base1E9BufferLength] :
+                (base1E9BufferFromPool = ArrayPool<uint>.Shared.Rent(base1E9BufferLength));
 
-            for (int iuSrc = cuSrc; --iuSrc >= 0;)
-            {
-                uint uCarry = value._bits[iuSrc];
-                for (int iuDst = 0; iuDst < cuDst; iuDst++)
-                {
-                    Debug.Assert(base1E9Buffer[iuDst] < PowersOf1e9.TenPowMaxPartial);
-
-                    // Use X86Base.DivRem when stable
-                    ulong uuRes = NumericsHelpers.MakeUInt64(base1E9Buffer[iuDst], uCarry);
-                    (ulong quo, ulong rem) = Math.DivRem(uuRes, PowersOf1e9.TenPowMaxPartial);
-                    uCarry = (uint)quo;
-                    base1E9Buffer[iuDst] = (uint)rem;
-                }
-                if (uCarry != 0)
-                {
-                    (uCarry, base1E9Buffer[cuDst++]) = Math.DivRem(uCarry, PowersOf1e9.TenPowMaxPartial);
-                    if (uCarry != 0)
-                        base1E9Buffer[cuDst++] = uCarry;
-                }
-            }
-
-            ReadOnlySpan<uint> base1E9Value = base1E9Buffer[..cuDst];
+            ReadOnlySpan<uint> base1E9Value = BigIntegerToBase1E9(value._bits, base1E9Buffer);
 
             int valueDigits = (base1E9Value.Length - 1) * PowersOf1e9.MaxPartialDigits + FormattingHelpers.CountDigits(base1E9Value[^1]);
 
@@ -1019,9 +995,9 @@ namespace System
                 }
             }
 
-            if (bufferToReturn != null)
+            if (base1E9BufferFromPool != null)
             {
-                ArrayPool<uint>.Shared.Return(bufferToReturn);
+                ArrayPool<uint>.Shared.Return(base1E9BufferFromPool);
             }
 
             return strResult;
@@ -1040,6 +1016,35 @@ namespace System
             }
 
             return UInt32ToDecChars(bufferEnd, base1E9Value[^1], digits);
+        }
+
+        private static ReadOnlySpan<uint> BigIntegerToBase1E9(ReadOnlySpan<uint> bits, Span<uint> base1E9Buffer)
+        {
+            // First convert to base 10^9.
+            int cuSrc = bits.Length;
+            int cuDst = 0;
+
+            for (int iuSrc = cuSrc; --iuSrc >= 0;)
+            {
+                uint uCarry = bits[iuSrc];
+                for (int iuDst = 0; iuDst < cuDst; iuDst++)
+                {
+                    Debug.Assert(base1E9Buffer[iuDst] < PowersOf1e9.TenPowMaxPartial);
+
+                    // Use X86Base.DivRem when stable
+                    ulong uuRes = NumericsHelpers.MakeUInt64(base1E9Buffer[iuDst], uCarry);
+                    (ulong quo, ulong rem) = Math.DivRem(uuRes, PowersOf1e9.TenPowMaxPartial);
+                    uCarry = (uint)quo;
+                    base1E9Buffer[iuDst] = (uint)rem;
+                }
+                if (uCarry != 0)
+                {
+                    (uCarry, base1E9Buffer[cuDst++]) = Math.DivRem(uCarry, PowersOf1e9.TenPowMaxPartial);
+                    if (uCarry != 0)
+                        base1E9Buffer[cuDst++] = uCarry;
+                }
+            }
+            return base1E9Buffer[..cuDst];
         }
 
         internal readonly ref struct PowersOf1e9
