@@ -916,9 +916,7 @@ namespace System
 #else
         public const
 #endif
-            // TODO: https://github.com/dotnet/runtime/pull/96895
-            // int ToStringNaiveThreshold = BigIntegerCalculator.DivideBurnikelZieglerThreshold;
-            int ToStringNaiveThreshold = 16;
+            int ToStringNaiveThreshold = BigIntegerCalculator.DivideBurnikelZieglerThreshold;
         private static void BigIntegerToBase1E9(ReadOnlySpan<uint> bits, Span<uint> base1E9Buffer, out int leadingWritten)
         {
             Debug.Assert(ToStringNaiveThreshold >= 2);
