@@ -406,7 +406,7 @@ namespace System
                 int powersOf1e9BufferLength = PowersOf1e9.GetBufferSize(Math.Max(valueDigits, trailingZeroCount + 1), out int maxIndex);
                 uint[]? powersOf1e9BufferFromPool = null;
                 Span<uint> powersOf1e9Buffer = (
-                    powersOf1e9BufferLength <= BigIntegerCalculator.StackAllocThreshold
+                    (uint)powersOf1e9BufferLength <= BigIntegerCalculator.StackAllocThreshold
                     ? stackalloc uint[BigIntegerCalculator.StackAllocThreshold]
                     : powersOf1e9BufferFromPool = ArrayPool<uint>.Shared.Rent(powersOf1e9BufferLength)).Slice(0, powersOf1e9BufferLength);
                 powersOf1e9Buffer.Clear();
@@ -786,9 +786,9 @@ namespace System
 
             int base1E9BufferLength = (int)(value._bits.Length * digitRatio) + 1;
             uint[]? base1E9BufferFromPool = null;
-            Span<uint> base1E9Buffer = base1E9BufferLength < BigIntegerCalculator.StackAllocThreshold ?
+            Span<uint> base1E9Buffer = ((uint)base1E9BufferLength <= BigIntegerCalculator.StackAllocThreshold ?
                 stackalloc uint[base1E9BufferLength] :
-                (base1E9BufferFromPool = ArrayPool<uint>.Shared.Rent(base1E9BufferLength));
+                (base1E9BufferFromPool = ArrayPool<uint>.Shared.Rent(base1E9BufferLength))).Slice(0, base1E9BufferLength);
             base1E9Buffer.Clear();
 
 
