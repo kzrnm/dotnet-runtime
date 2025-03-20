@@ -23,7 +23,6 @@ namespace System
           IMinMaxValue<byte>,
           IUnsignedNumber<byte>,
           IUtf8SpanFormattable,
-          IUtfChar<byte>,
           IBinaryIntegerParseAndFormatInfo<byte>
     {
         private readonly byte m_value; // Do not rename (binary serialization)
@@ -1183,18 +1182,6 @@ namespace System
 
         /// <inheritdoc cref="IUtf8SpanParsable{TSelf}.TryParse(ReadOnlySpan{byte}, IFormatProvider?, out TSelf)" />
         public static bool TryParse(ReadOnlySpan<byte> utf8Text, IFormatProvider? provider, out byte result) => TryParse(utf8Text, NumberStyles.Integer, provider, out result);
-
-        //
-        // IUtfChar
-        //
-
-        static byte IUtfChar<byte>.CastFrom(byte value) => value;
-        static byte IUtfChar<byte>.CastFrom(char value) => (byte)value;
-        static byte IUtfChar<byte>.CastFrom(int value) => (byte)value;
-        static byte IUtfChar<byte>.CastFrom(uint value) => (byte)value;
-        static byte IUtfChar<byte>.CastFrom(ulong value) => (byte)value;
-
-        static uint IUtfChar<byte>.CastToUInt32(byte value) => value;
 
         //
         // IBinaryIntegerParseAndFormatInfo

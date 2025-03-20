@@ -37,6 +37,8 @@
              Link="Common\System\Number.NumberBuffer.cs" />
     <Compile Include="$(CommonPath)System\Number.Parsing.Common.cs"
              Link="Common\System\Number.Parsing.Common.cs" />
+    <Compile Include="$(CommonPath)System\UtfCharConverter.cs"
+             Link="Common\System\UtfCharConverter.cs" />
   </ItemGroup>
 
   <ItemGroup>

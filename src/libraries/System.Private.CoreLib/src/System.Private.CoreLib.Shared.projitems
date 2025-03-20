@@ -552,7 +552,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\IObserver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IProgress.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\ISpanFormattable.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\IUtfChar.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IUtf8SpanFormattable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IUtf8SpanParsable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Lazy.cs" />
@@ -1461,6 +1460,9 @@
     </Compile>
     <Compile Include="$(CommonPath)System\SR.cs">
       <Link>Common\System\SR.cs</Link>
+    </Compile>
+    <Compile Include="$(CommonPath)System\UtfCharConverter.cs">
+      <Link>Common\System\UtfCharConverter.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)System\Collections\Concurrent\IProducerConsumerQueue.cs">
       <Link>System\Collections\Concurrent\IProducerConsumerQueue.cs</Link>
