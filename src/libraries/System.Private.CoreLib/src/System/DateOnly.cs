@@ -789,7 +789,7 @@ namespace System
             TryFormatCore(utf8Destination, out bytesWritten, format, provider);
 
         private bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten, [StringSyntax(StringSyntaxAttribute.DateOnlyFormat)] ReadOnlySpan<char> format, IFormatProvider? provider = null)
-            where TChar : unmanaged, IUtfChar<TChar>
+            where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (format.Length == 0)
             {

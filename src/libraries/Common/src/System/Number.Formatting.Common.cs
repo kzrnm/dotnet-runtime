@@ -125,7 +125,7 @@ namespace System
 
 #if !SYSTEM_PRIVATE_CORELIB
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static unsafe TChar* UInt32ToDecChars<TChar>(TChar* bufferEnd, uint value, int digits) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe TChar* UInt32ToDecChars<TChar>(TChar* bufferEnd, uint value, int digits) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             // TODO: Consider to bring optimized implementation from CoreLib
 
@@ -133,14 +133,14 @@ namespace System
             {
                 digits--;
                 (value, uint remainder) = Math.DivRem(value, 10);
-                *(--bufferEnd) = TChar.CastFrom(remainder + '0');
+                *(--bufferEnd) = UtfCharConverter.CastFrom<TChar>(remainder + '0');
             }
 
             return bufferEnd;
         }
 #endif
 
-        internal static unsafe void NumberToString<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, char format, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe void NumberToString<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, char format, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
@@ -289,7 +289,7 @@ namespace System
             }
         }
 
-        internal static unsafe void NumberToStringFormat<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, ReadOnlySpan<char> format, NumberFormatInfo info) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe void NumberToStringFormat<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, ReadOnlySpan<char> format, NumberFormatInfo info) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
@@ -542,7 +542,7 @@ namespace System
                                 {
                                     // digPos will be one greater than thousandsSepPos[thousandsSepCtr] since we are at
                                     // the character after which the groupSeparator needs to be appended.
-                                    vlb.Append(TChar.CastFrom(*cur != 0 ? (char)(*cur++) : '0'));
+                                    vlb.Append(UtfCharConverter.CastFrom<TChar>(*cur != 0 ? (char)(*cur++) : '0'));
                                     if (thousandSeps && digPos > 1 && thousandsSepCtr >= 0)
                                     {
                                         if (digPos == thousandsSepPos[thousandsSepCtr] + 1)
@@ -575,7 +575,7 @@ namespace System
 
                                 if (ch != 0)
                                 {
-                                    vlb.Append(TChar.CastFrom(ch));
+                                    vlb.Append(UtfCharConverter.CastFrom<TChar>(ch));
                                     if (thousandSeps && digPos > 1 && thousandsSepCtr >= 0)
                                     {
                                         if (digPos == thousandsSepPos[thousandsSepCtr] + 1)
@@ -662,7 +662,7 @@ namespace System
                                     }
                                     else
                                     {
-                                        vlb.Append(TChar.CastFrom(ch));
+                                        vlb.Append(UtfCharConverter.CastFrom<TChar>(ch));
                                         break;
                                     }
 
@@ -682,7 +682,7 @@ namespace System
                                 }
                                 else
                                 {
-                                    vlb.Append(TChar.CastFrom(ch));
+                                    vlb.Append(UtfCharConverter.CastFrom<TChar>(ch));
                                     if (src < format.Length)
                                     {
                                         if (pFormat[src] == '+' || pFormat[src] == '-')
@@ -712,7 +712,7 @@ namespace System
             }
         }
 
-        private static unsafe void FormatCurrency<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatCurrency<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
@@ -737,7 +737,7 @@ namespace System
                         break;
 
                     default:
-                        vlb.Append(TChar.CastFrom(ch));
+                        vlb.Append(UtfCharConverter.CastFrom<TChar>(ch));
                         break;
                 }
             }
@@ -746,7 +746,7 @@ namespace System
         private static unsafe void FormatFixed<TChar>(
             ref ValueListBuilder<TChar> vlb, ref NumberBuffer number,
             int nMaxDigits, int[]? groupDigits,
-            ReadOnlySpan<TChar> sDecimal, ReadOnlySpan<TChar> sGroup) where TChar : unmanaged, IUtfChar<TChar>
+            ReadOnlySpan<TChar> sDecimal, ReadOnlySpan<TChar> sGroup) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
@@ -796,7 +796,7 @@ namespace System
                         TChar* p = spanPtr + bufferSize - 1;
                         for (int i = digPos - 1; i >= 0; i--)
                         {
-                            *(p--) = TChar.CastFrom((i < digStart) ? (char)dig[i] : '0');
+                            *(p--) = UtfCharConverter.CastFrom<TChar>((i < digStart) ? (char)dig[i] : '0');
 
                             if (groupSize > 0)
                             {
@@ -826,14 +826,14 @@ namespace System
                 {
                     do
                     {
-                        vlb.Append(TChar.CastFrom(*dig != 0 ? (char)(*dig++) : '0'));
+                        vlb.Append(UtfCharConverter.CastFrom<TChar>(*dig != 0 ? (char)(*dig++) : '0'));
                     }
                     while (--digPos > 0);
                 }
             }
             else
             {
-                vlb.Append(TChar.CastFrom('0'));
+                vlb.Append(UtfCharConverter.CastFrom<TChar>('0'));
             }
 
             if (nMaxDigits > 0)
@@ -844,7 +844,7 @@ namespace System
                     int zeroes = Math.Min(-digPos, nMaxDigits);
                     for (int i = 0; i < zeroes; i++)
                     {
-                        vlb.Append(TChar.CastFrom('0'));
+                        vlb.Append(UtfCharConverter.CastFrom<TChar>('0'));
                     }
                     digPos += zeroes;
                     nMaxDigits -= zeroes;
@@ -852,7 +852,7 @@ namespace System
 
                 while (nMaxDigits > 0)
                 {
-                    vlb.Append(TChar.CastFrom((*dig != 0) ? (char)(*dig++) : '0'));
+                    vlb.Append(UtfCharConverter.CastFrom<TChar>((*dig != 0) ? (char)(*dig++) : '0'));
                     nMaxDigits--;
                 }
             }
@@ -861,13 +861,13 @@ namespace System
         /// <summary>Appends a char to the builder when the char is not known to be ASCII.</summary>
         /// <remarks>This requires a helper as if the character isn't ASCII, for UTF-8 encoding it will result in multiple bytes added.</remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe void AppendUnknownChar<TChar>(ref ValueListBuilder<TChar> vlb, char ch) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void AppendUnknownChar<TChar>(ref ValueListBuilder<TChar> vlb, char ch) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
             if (sizeof(TChar) == sizeof(char) || char.IsAscii(ch))
             {
-                vlb.Append(TChar.CastFrom(ch));
+                vlb.Append(UtfCharConverter.CastFrom<TChar>(ch));
             }
             else
             {
@@ -882,7 +882,7 @@ namespace System
             }
         }
 
-        private static unsafe void FormatNumber<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatNumber<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
@@ -903,19 +903,19 @@ namespace System
                         break;
 
                     default:
-                        vlb.Append(TChar.CastFrom(ch));
+                        vlb.Append(UtfCharConverter.CastFrom<TChar>(ch));
                         break;
                 }
             }
         }
 
-        private static unsafe void FormatScientific<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info, char expChar) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatScientific<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info, char expChar) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
             byte* dig = number.DigitsPtr;
 
-            vlb.Append(TChar.CastFrom((*dig != 0) ? (char)(*dig++) : '0'));
+            vlb.Append(UtfCharConverter.CastFrom<TChar>((*dig != 0) ? (char)(*dig++) : '0'));
 
             if (nMaxDigits != 1) // For E0 we would like to suppress the decimal point
             {
@@ -924,18 +924,18 @@ namespace System
 
             while (--nMaxDigits > 0)
             {
-                vlb.Append(TChar.CastFrom((*dig != 0) ? (char)(*dig++) : '0'));
+                vlb.Append(UtfCharConverter.CastFrom<TChar>((*dig != 0) ? (char)(*dig++) : '0'));
             }
 
             int e = number.Digits[0] == 0 ? 0 : number.Scale - 1;
             FormatExponent(ref vlb, info, e, expChar, 3, true);
         }
 
-        private static unsafe void FormatExponent<TChar>(ref ValueListBuilder<TChar> vlb, NumberFormatInfo info, int value, char expChar, int minDigits, bool positiveSign) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatExponent<TChar>(ref ValueListBuilder<TChar> vlb, NumberFormatInfo info, int value, char expChar, int minDigits, bool positiveSign) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
-            vlb.Append(TChar.CastFrom(expChar));
+            vlb.Append(UtfCharConverter.CastFrom<TChar>(expChar));
 
             if (value < 0)
             {
@@ -955,7 +955,7 @@ namespace System
             vlb.Append(new ReadOnlySpan<TChar>(p, (int)(digits + MaxUInt32DecDigits - p)));
         }
 
-        private static unsafe void FormatGeneral<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info, char expChar, bool suppressScientific) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatGeneral<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info, char expChar, bool suppressScientific) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
@@ -978,13 +978,13 @@ namespace System
             {
                 do
                 {
-                    vlb.Append(TChar.CastFrom((*dig != 0) ? (char)(*dig++) : '0'));
+                    vlb.Append(UtfCharConverter.CastFrom<TChar>((*dig != 0) ? (char)(*dig++) : '0'));
                 }
                 while (--digPos > 0);
             }
             else
             {
-                vlb.Append(TChar.CastFrom('0'));
+                vlb.Append(UtfCharConverter.CastFrom<TChar>('0'));
             }
 
             if (*dig != 0 || digPos < 0)
@@ -993,13 +993,13 @@ namespace System
 
                 while (digPos < 0)
                 {
-                    vlb.Append(TChar.CastFrom('0'));
+                    vlb.Append(UtfCharConverter.CastFrom<TChar>('0'));
                     digPos++;
                 }
 
                 while (*dig != 0)
                 {
-                    vlb.Append(TChar.CastFrom(*dig++));
+                    vlb.Append(UtfCharConverter.CastFrom<TChar>(*dig++));
                 }
             }
 
@@ -1009,7 +1009,7 @@ namespace System
             }
         }
 
-        private static unsafe void FormatPercent<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatPercent<TChar>(ref ValueListBuilder<TChar> vlb, ref NumberBuffer number, int nMaxDigits, NumberFormatInfo info) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(sizeof(TChar) == sizeof(char) || sizeof(TChar) == sizeof(byte));
 
@@ -1034,7 +1034,7 @@ namespace System
                         break;
 
                     default:
-                        vlb.Append(TChar.CastFrom(ch));
+                        vlb.Append(UtfCharConverter.CastFrom<TChar>(ch));
                         break;
                 }
             }

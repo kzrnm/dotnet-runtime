@@ -102,7 +102,7 @@ namespace System
             {
                 NumberBuffer number = new NumberBuffer(NumberBufferKind.Integer, buffer);
 
-                if (!TryStringToNumber(MemoryMarshal.Cast<char, Utf16Char>(value), style, ref number, info))
+                if (!TryStringToNumber(value, style, ref number, info))
                 {
                     result = default;
                     ret = ParsingStatus.Failed;
@@ -842,7 +842,7 @@ namespace System
                         sNegative?.CopyTo(destination);
                         fixed (char* ptr = &MemoryMarshal.GetReference(destination))
                         {
-                            BigIntegerToDecChars((Utf16Char*)ptr + strLength, base1E9Value, digits);
+                            BigIntegerToDecChars(ptr + strLength, base1E9Value, digits);
                         }
                         charsWritten = strLength;
                         spanSuccess = true;
@@ -860,7 +860,7 @@ namespace System
                             state.sNegative?.CopyTo(span);
                             fixed (char* ptr = &MemoryMarshal.GetReference(span))
                             {
-                                BigIntegerToDecChars((Utf16Char*)ptr + span.Length, new ReadOnlySpan<uint>((void*)state.ptr, state.Length), state.digits);
+                                BigIntegerToDecChars(ptr + span.Length, new ReadOnlySpan<uint>((void*)state.ptr, state.Length), state.digits);
                             }
                         });
                     }
@@ -875,13 +875,13 @@ namespace System
                 fixed (byte* ptr = numberBuffer) // NumberBuffer expects pinned Digits
                 {
                     scoped NumberBuffer number = new NumberBuffer(NumberBufferKind.Integer, ptr, valueDigits + 1);
-                    BigIntegerToDecChars((Utf8Char*)ptr + valueDigits, base1E9Value, valueDigits);
+                    BigIntegerToDecChars(ptr + valueDigits, base1E9Value, valueDigits);
                     number.Digits[^1] = 0;
                     number.DigitsCount = valueDigits;
                     number.Scale = valueDigits;
                     number.IsNegative = value.Sign < 0;
 
-                    scoped var vlb = new ValueListBuilder<Utf16Char>(stackalloc Utf16Char[CharStackBufferSize]); // arbitrary stack cut-off
+                    scoped var vlb = new ValueListBuilder<char>(stackalloc char[CharStackBufferSize]); // arbitrary stack cut-off
 
                     if (fmt != 0)
                     {
@@ -894,14 +894,14 @@ namespace System
 
                     if (targetSpan)
                     {
-                        spanSuccess = vlb.TryCopyTo(MemoryMarshal.Cast<char, Utf16Char>(destination), out charsWritten);
+                        spanSuccess = vlb.TryCopyTo(destination, out charsWritten);
                         strResult = null;
                     }
                     else
                     {
                         charsWritten = 0;
                         spanSuccess = false;
-                        strResult = MemoryMarshal.Cast<Utf16Char, char>(vlb.AsSpan()).ToString();
+                        strResult = vlb.AsSpan().ToString();
                     }
 
                     vlb.Dispose();
@@ -921,7 +921,7 @@ namespace System
         }
 
         private static unsafe TChar* BigIntegerToDecChars<TChar>(TChar* bufferEnd, ReadOnlySpan<uint> base1E9Value, int digits)
-            where TChar : unmanaged, IUtfChar<TChar>
+            where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(base1E9Value[^1] != 0, "Leading zeros should be trimmed by caller.");
 

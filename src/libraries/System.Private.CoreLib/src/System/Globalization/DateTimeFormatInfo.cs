@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -364,7 +365,7 @@ namespace System.Globalization
             }
         }
 
-        internal ReadOnlySpan<TChar> AMDesignatorTChar<TChar>() where TChar : unmanaged, IUtfChar<TChar>
+        internal ReadOnlySpan<TChar> AMDesignatorTChar<TChar>() where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
             return typeof(TChar) == typeof(char) ?
@@ -613,7 +614,7 @@ namespace System.Globalization
             }
         }
 
-        internal ReadOnlySpan<TChar> DateSeparatorTChar<TChar>() where TChar : unmanaged, IUtfChar<TChar>
+        internal ReadOnlySpan<TChar> DateSeparatorTChar<TChar>() where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
             return typeof(TChar) == typeof(char) ?
@@ -816,7 +817,7 @@ namespace System.Globalization
             }
         }
 
-        internal ReadOnlySpan<TChar> PMDesignatorTChar<TChar>() where TChar : unmanaged, IUtfChar<TChar>
+        internal ReadOnlySpan<TChar> PMDesignatorTChar<TChar>() where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
             return typeof(TChar) == typeof(char) ?
@@ -998,7 +999,7 @@ namespace System.Globalization
             }
         }
 
-        internal ReadOnlySpan<TChar> TimeSeparatorTChar<TChar>() where TChar : unmanaged, IUtfChar<TChar>
+        internal ReadOnlySpan<TChar> TimeSeparatorTChar<TChar>() where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
             return typeof(TChar) == typeof(char) ?
@@ -1698,7 +1699,7 @@ namespace System.Globalization
             new NumberFormatInfo(_cultureData.UseUserOverride ? CultureData.GetCultureData(_cultureData.CultureName, false) : _cultureData).NumberDecimalSeparator;
 
         private byte[]? _decimalSeparatorUtf8;
-        internal ReadOnlySpan<TChar> DecimalSeparatorTChar<TChar>() where TChar : unmanaged, IUtfChar<TChar>
+        internal ReadOnlySpan<TChar> DecimalSeparatorTChar<TChar>() where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
             return typeof(TChar) == typeof(char) ?

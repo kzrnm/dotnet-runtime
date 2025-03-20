@@ -200,7 +200,7 @@ namespace System
         public bool TryFormat(Span<byte> utf8Destination, int fieldCount, out int bytesWritten) =>
             TryFormatCore(utf8Destination, fieldCount, out bytesWritten);
 
-        private bool TryFormatCore<TChar>(Span<TChar> destination, int fieldCount, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        private bool TryFormatCore<TChar>(Span<TChar> destination, int fieldCount, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
 
@@ -234,7 +234,7 @@ namespace System
                         return false;
                     }
 
-                    destination[0] = TChar.CastFrom('.');
+                    destination[0] = UtfCharConverter.CastFrom<TChar>('.');
                     destination = destination.Slice(1);
                     totalCharsWritten++;
                 }
@@ -355,10 +355,10 @@ namespace System
         }
 
         private static Version? ParseVersion<TChar>(ReadOnlySpan<TChar> input, bool throwOnFailure)
-            where TChar : unmanaged, IUtfChar<TChar>
+            where TChar : unmanaged, IBinaryInteger<TChar>
         {
             // Find the separator between major and minor.  It must exist.
-            int majorEnd = input.IndexOf(TChar.CastFrom('.'));
+            int majorEnd = input.IndexOf(UtfCharConverter.CastFrom<TChar>('.'));
             if (majorEnd < 0)
             {
                 if (throwOnFailure) throw new ArgumentException(SR.Arg_VersionString, nameof(input));
@@ -368,15 +368,15 @@ namespace System
             // Find the ends of the optional minor and build portions.
             // We musn't have any separators after build.
             int buildEnd = -1;
-            int minorEnd = input.Slice(majorEnd + 1).IndexOf(TChar.CastFrom('.'));
+            int minorEnd = input.Slice(majorEnd + 1).IndexOf(UtfCharConverter.CastFrom<TChar>('.'));
             if (minorEnd >= 0)
             {
                 minorEnd += (majorEnd + 1);
-                buildEnd = input.Slice(minorEnd + 1).IndexOf(TChar.CastFrom('.'));
+                buildEnd = input.Slice(minorEnd + 1).IndexOf(UtfCharConverter.CastFrom<TChar>('.'));
                 if (buildEnd >= 0)
                 {
                     buildEnd += (minorEnd + 1);
-                    if (input.Slice(buildEnd + 1).Contains(TChar.CastFrom('.')))
+                    if (input.Slice(buildEnd + 1).Contains(UtfCharConverter.CastFrom<TChar>('.')))
                     {
                         if (throwOnFailure) throw new ArgumentException(SR.Arg_VersionString, nameof(input));
                         return null;
@@ -427,7 +427,7 @@ namespace System
         }
 
         private static bool TryParseComponent<TChar>(ReadOnlySpan<TChar> component, string componentName, bool throwOnFailure, out int parsedComponent)
-            where TChar : unmanaged, IUtfChar<TChar>
+            where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (throwOnFailure)
             {

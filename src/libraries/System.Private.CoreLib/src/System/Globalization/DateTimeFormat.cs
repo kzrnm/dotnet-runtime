@@ -161,7 +161,7 @@ namespace System
         /// <param name="minimumLength">
         /// The minimum length for formatted number. If the number of digits in the value is less than this length, it will be padded with leading zeros.
         /// </param>
-        internal static unsafe void FormatDigits<TChar>(ref ValueListBuilder<TChar> outputBuffer, int value, int minimumLength) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe void FormatDigits<TChar>(ref ValueListBuilder<TChar> outputBuffer, int value, int minimumLength) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(value >= 0, "DateTimeFormat.FormatDigits(): value >= 0");
             Debug.Assert(minimumLength <= 16);
@@ -281,7 +281,7 @@ namespace System
         // The pos should point to a quote character. This method will
         // append to the result StringBuilder the string enclosed by the quote character.
         //
-        internal static int ParseQuoteString<TChar>(scoped ReadOnlySpan<char> format, int pos, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IUtfChar<TChar>
+        internal static int ParseQuoteString<TChar>(scoped ReadOnlySpan<char> format, int pos, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             //
             // NOTE : pos will be the index of the quote character in the 'format' string.
@@ -308,7 +308,7 @@ namespace System
                     // because the second double quote is escaped.
                     if (pos < formatLen)
                     {
-                        result.Append(TChar.CastFrom(format[pos++]));
+                        result.Append(UtfCharConverter.CastFrom<TChar>(format[pos++]));
                     }
                     else
                     {
@@ -426,7 +426,7 @@ namespace System
         //  Actions: Format the DateTime instance using the specified format.
         //
         private static void FormatCustomized<TChar>(
-            DateTime dateTime, scoped ReadOnlySpan<char> format, DateTimeFormatInfo dtfi, TimeSpan offset, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IUtfChar<TChar>
+            DateTime dateTime, scoped ReadOnlySpan<char> format, DateTimeFormatInfo dtfi, TimeSpan offset, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Calendar cal = dtfi.Calendar;
 
@@ -512,7 +512,7 @@ namespace System
                                 else
                                 {
                                     // No fraction to emit, so see if we should remove decimal also.
-                                    if (result.Length > 0 && result[^1] == TChar.CastFrom('.'))
+                                    if (result.Length > 0 && result[^1] == UtfCharConverter.CastFrom<TChar>('.'))
                                     {
                                         result.Length--;
                                     }
@@ -719,7 +719,7 @@ namespace System
                         nextChar = ParseNextChar(format, i);
                         if (nextChar >= 0)
                         {
-                            result.Append(TChar.CastFrom(nextChar));
+                            result.Append(UtfCharConverter.CastFrom<TChar>(nextChar));
                             tokenLen = 2;
                         }
                         else
@@ -744,11 +744,11 @@ namespace System
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static void AppendChar<TChar>(ref ValueListBuilder<TChar> result, char ch) where TChar : unmanaged, IUtfChar<TChar>
+        internal static void AppendChar<TChar>(ref ValueListBuilder<TChar> result, char ch) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (typeof(TChar) == typeof(char) || char.IsAscii(ch))
             {
-                result.Append(TChar.CastFrom(ch));
+                result.Append(UtfCharConverter.CastFrom<TChar>(ch));
             }
             else
             {
@@ -759,7 +759,7 @@ namespace System
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void AppendString<TChar>(ref ValueListBuilder<TChar> result, scoped ReadOnlySpan<char> s) where TChar : unmanaged, IUtfChar<TChar>
+        private static void AppendString<TChar>(ref ValueListBuilder<TChar> result, scoped ReadOnlySpan<char> s) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (typeof(TChar) == typeof(char))
             {
@@ -772,7 +772,7 @@ namespace System
             }
         }
 
-        internal static void FormatFraction<TChar>(ref ValueListBuilder<TChar> result, int fraction, ReadOnlySpan<char> fractionFormat) where TChar : unmanaged, IUtfChar<TChar>
+        internal static void FormatFraction<TChar>(ref ValueListBuilder<TChar> result, int fraction, ReadOnlySpan<char> fractionFormat) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Span<TChar> chars = stackalloc TChar[11];
             int charCount;
@@ -784,7 +784,7 @@ namespace System
         }
 
         // output the 'z' family of formats, which output a the offset from UTC, e.g. "-07:30"
-        private static unsafe void FormatCustomizedTimeZone<TChar>(DateTime dateTime, TimeSpan offset, int tokenLen, bool timeOnly, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatCustomizedTimeZone<TChar>(DateTime dateTime, TimeSpan offset, int tokenLen, bool timeOnly, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             // See if the instance already has an offset
             bool dateTimeFormat = offset.Ticks == NullOffset;
@@ -810,11 +810,11 @@ namespace System
 
             if (offset.Ticks >= 0)
             {
-                result.Append(TChar.CastFrom('+'));
+                result.Append(UtfCharConverter.CastFrom<TChar>('+'));
             }
             else
             {
-                result.Append(TChar.CastFrom('-'));
+                result.Append(UtfCharConverter.CastFrom<TChar>('-'));
                 offset = offset.Negate(); // get a positive offset, so that you don't need a separate code path for the negative numbers.
             }
 
@@ -824,9 +824,9 @@ namespace System
                 (int tens, int ones) = Math.DivRem(offset.Hours, 10);
                 if (tens != 0)
                 {
-                    result.Append(TChar.CastFrom('0' + tens));
+                    result.Append(UtfCharConverter.CastFrom<TChar>('0' + tens));
                 }
-                result.Append(TChar.CastFrom('0' + ones));
+                result.Append(UtfCharConverter.CastFrom<TChar>('0' + ones));
             }
             else if (tokenLen == 2)
             {
@@ -842,14 +842,14 @@ namespace System
                 fixed (TChar* p = &MemoryMarshal.GetReference(result.AppendSpan(5)))
                 {
                     Number.WriteTwoDigits((uint)offset.Hours, p);
-                    p[2] = TChar.CastFrom(':');
+                    p[2] = UtfCharConverter.CastFrom<TChar>(':');
                     Number.WriteTwoDigits((uint)offset.Minutes, p + 3);
                 }
             }
         }
 
         // output the 'K' format, which is for round-tripping the data
-        private static unsafe void FormatCustomizedRoundripTimeZone<TChar>(DateTime dateTime, TimeSpan offset, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe void FormatCustomizedRoundripTimeZone<TChar>(DateTime dateTime, TimeSpan offset, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             // The objective of this format is to round trip the data in the type
             // For DateTime it should round-trip the Kind value and preserve the time zone.
@@ -867,7 +867,7 @@ namespace System
                         break;
                     case DateTimeKind.Utc:
                         // The 'Z' constant is a marker for a UTC date
-                        result.Append(TChar.CastFrom('Z'));
+                        result.Append(UtfCharConverter.CastFrom<TChar>('Z'));
                         return;
                     default:
                         // If the kind is unspecified, we output nothing here
@@ -876,11 +876,11 @@ namespace System
             }
             if (offset.Ticks >= 0)
             {
-                result.Append(TChar.CastFrom('+'));
+                result.Append(UtfCharConverter.CastFrom<TChar>('+'));
             }
             else
             {
-                result.Append(TChar.CastFrom('-'));
+                result.Append(UtfCharConverter.CastFrom<TChar>('-'));
                 // get a positive offset, so that you don't need a separate code path for the negative numbers.
                 offset = offset.Negate();
             }
@@ -888,7 +888,7 @@ namespace System
             fixed (TChar* hoursMinutes = &MemoryMarshal.GetReference(result.AppendSpan(5)))
             {
                 Number.WriteTwoDigits((uint)offset.Hours, hoursMinutes);
-                hoursMinutes[2] = TChar.CastFrom(':');
+                hoursMinutes[2] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)offset.Minutes, hoursMinutes + 3);
             }
         }
@@ -1026,10 +1026,10 @@ namespace System
             return resultString;
         }
 
-        internal static bool TryFormat<TChar>(DateTime dateTime, Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) where TChar : unmanaged, IUtfChar<TChar> =>
+        internal static bool TryFormat<TChar>(DateTime dateTime, Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) where TChar : unmanaged, IBinaryInteger<TChar> =>
             TryFormat(dateTime, destination, out charsWritten, format, provider, new TimeSpan(NullOffset));
 
-        internal static bool TryFormat<TChar>(DateTime dateTime, Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider, TimeSpan offset) where TChar : unmanaged, IUtfChar<TChar>
+        internal static bool TryFormat<TChar>(DateTime dateTime, Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider, TimeSpan offset) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
 
@@ -1313,7 +1313,7 @@ namespace System
         //   012345678901234567890123456789012
         //   ---------------------------------
         //   05:30:45.7680000
-        internal static unsafe bool TryFormatTimeOnlyO<TChar>(TimeOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatTimeOnlyO<TChar>(TimeOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (destination.Length < 16)
             {
@@ -1327,11 +1327,11 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 Number.WriteTwoDigits((uint)hour, dest);
-                dest[2] = TChar.CastFrom(':');
+                dest[2] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minute, dest + 3);
-                dest[5] = TChar.CastFrom(':');
+                dest[5] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)second, dest + 6);
-                dest[8] = TChar.CastFrom('.');
+                dest[8] = UtfCharConverter.CastFrom<TChar>('.');
                 Number.WriteDigits((uint)fraction, dest + 9, 7);
             }
 
@@ -1341,7 +1341,7 @@ namespace System
         //   012345678901234567890123456789012
         //   ---------------------------------
         //   05:30:45
-        internal static unsafe bool TryFormatTimeOnlyR<TChar>(TimeOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatTimeOnlyR<TChar>(TimeOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (destination.Length < 8)
             {
@@ -1355,9 +1355,9 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 Number.WriteTwoDigits((uint)hour, dest);
-                dest[2] = TChar.CastFrom(':');
+                dest[2] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minute, dest + 3);
-                dest[5] = TChar.CastFrom(':');
+                dest[5] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)second, dest + 6);
             }
 
@@ -1368,7 +1368,7 @@ namespace System
         //   012345678901234567890123456789012
         //   ---------------------------------
         //   2017-06-12
-        internal static unsafe bool TryFormatDateOnlyO<TChar>(DateOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatDateOnlyO<TChar>(DateOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (destination.Length < 10)
             {
@@ -1382,9 +1382,9 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 Number.WriteFourDigits((uint)year, dest);
-                dest[4] = TChar.CastFrom('-');
+                dest[4] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)month, dest + 5);
-                dest[7] = TChar.CastFrom('-');
+                dest[7] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)day, dest + 8);
             }
 
@@ -1395,7 +1395,7 @@ namespace System
         //   01234567890123456789012345678
         //   -----------------------------
         //   Tue, 03 Jan 2017
-        internal static unsafe bool TryFormatDateOnlyR<TChar>(DateOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatDateOnlyR<TChar>(DateOnly value, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (destination.Length < 16)
             {
@@ -1415,18 +1415,18 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 char c = dayAbbrev[2]; // remove bounds checks on remaining dayAbbrev accesses
-                dest[0] = TChar.CastFrom(dayAbbrev[0]);
-                dest[1] = TChar.CastFrom(dayAbbrev[1]);
-                dest[2] = TChar.CastFrom(c);
-                dest[3] = TChar.CastFrom(',');
-                dest[4] = TChar.CastFrom(' ');
+                dest[0] = UtfCharConverter.CastFrom<TChar>(dayAbbrev[0]);
+                dest[1] = UtfCharConverter.CastFrom<TChar>(dayAbbrev[1]);
+                dest[2] = UtfCharConverter.CastFrom<TChar>(c);
+                dest[3] = UtfCharConverter.CastFrom<TChar>(',');
+                dest[4] = UtfCharConverter.CastFrom<TChar>(' ');
                 Number.WriteTwoDigits((uint)day, dest + 5);
-                dest[7] = TChar.CastFrom(' ');
+                dest[7] = UtfCharConverter.CastFrom<TChar>(' ');
                 c = monthAbbrev[2]; // remove bounds checks on remaining monthAbbrev accesses
-                dest[8] = TChar.CastFrom(monthAbbrev[0]);
-                dest[9] = TChar.CastFrom(monthAbbrev[1]);
-                dest[10] = TChar.CastFrom(c);
-                dest[11] = TChar.CastFrom(' ');
+                dest[8] = UtfCharConverter.CastFrom<TChar>(monthAbbrev[0]);
+                dest[9] = UtfCharConverter.CastFrom<TChar>(monthAbbrev[1]);
+                dest[10] = UtfCharConverter.CastFrom<TChar>(c);
+                dest[11] = UtfCharConverter.CastFrom<TChar>(' ');
                 Number.WriteFourDigits((uint)year, dest + 12);
             }
 
@@ -1439,7 +1439,7 @@ namespace System
         //   2017-06-12T05:30:45.7680000-07:00
         //   2017-06-12T05:30:45.7680000Z           (Z is short for "+00:00" but also distinguishes DateTimeKind.Utc from DateTimeKind.Local)
         //   2017-06-12T05:30:45.7680000            (interpreted as local time wrt to current time zone)
-        internal static unsafe bool TryFormatO<TChar>(DateTime dateTime, TimeSpan offset, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatO<TChar>(DateTime dateTime, TimeSpan offset, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             int charsRequired = FormatOMinLength;
             DateTimeKind kind = DateTimeKind.Local;
@@ -1474,18 +1474,18 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 Number.WriteFourDigits((uint)year, dest);
-                dest[4] = TChar.CastFrom('-');
+                dest[4] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)month, dest + 5);
-                dest[7] = TChar.CastFrom('-');
+                dest[7] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)day, dest + 8);
-                dest[10] = TChar.CastFrom('T');
+                dest[10] = UtfCharConverter.CastFrom<TChar>('T');
                 dateTime.GetTimePrecise(out int hour, out int minute, out int second, out int tick);
                 Number.WriteTwoDigits((uint)hour, dest + 11);
-                dest[13] = TChar.CastFrom(':');
+                dest[13] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minute, dest + 14);
-                dest[16] = TChar.CastFrom(':');
+                dest[16] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)second, dest + 17);
-                dest[19] = TChar.CastFrom('.');
+                dest[19] = UtfCharConverter.CastFrom<TChar>('.');
                 Number.WriteDigits((uint)tick, dest + 20, 7);
 
                 if (kind == DateTimeKind.Local)
@@ -1501,14 +1501,14 @@ namespace System
 
                     (int offsetHours, int offsetMinutes) = Math.DivRem(offsetTotalMinutes, 60);
 
-                    dest[27] = TChar.CastFrom(sign);
+                    dest[27] = UtfCharConverter.CastFrom<TChar>(sign);
                     Number.WriteTwoDigits((uint)offsetHours, dest + 28);
-                    dest[30] = TChar.CastFrom(':');
+                    dest[30] = UtfCharConverter.CastFrom<TChar>(':');
                     Number.WriteTwoDigits((uint)offsetMinutes, dest + 31);
                 }
                 else if (kind == DateTimeKind.Utc)
                 {
-                    dest[27] = TChar.CastFrom('Z');
+                    dest[27] = UtfCharConverter.CastFrom<TChar>('Z');
                 }
             }
 
@@ -1519,7 +1519,7 @@ namespace System
         //   012345678901234567890123456789012
         //   ---------------------------------
         //   2017-06-12T05:30:45
-        internal static unsafe bool TryFormatS<TChar>(DateTime dateTime, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatS<TChar>(DateTime dateTime, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (destination.Length < FormatSLength)
             {
@@ -1534,16 +1534,16 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 Number.WriteFourDigits((uint)year, dest);
-                dest[4] = TChar.CastFrom('-');
+                dest[4] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)month, dest + 5);
-                dest[7] = TChar.CastFrom('-');
+                dest[7] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)day, dest + 8);
-                dest[10] = TChar.CastFrom('T');
+                dest[10] = UtfCharConverter.CastFrom<TChar>('T');
                 dateTime.GetTime(out int hour, out int minute, out int second);
                 Number.WriteTwoDigits((uint)hour, dest + 11);
-                dest[13] = TChar.CastFrom(':');
+                dest[13] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minute, dest + 14);
-                dest[16] = TChar.CastFrom(':');
+                dest[16] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)second, dest + 17);
             }
 
@@ -1554,7 +1554,7 @@ namespace System
         //   012345678901234567890123456789012
         //   ---------------------------------
         //   2017-06-12 05:30:45Z
-        internal static unsafe bool TryFormatu<TChar>(DateTime dateTime, TimeSpan offset, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatu<TChar>(DateTime dateTime, TimeSpan offset, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (destination.Length < FormatuLength)
             {
@@ -1574,18 +1574,18 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 Number.WriteFourDigits((uint)year, dest);
-                dest[4] = TChar.CastFrom('-');
+                dest[4] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)month, dest + 5);
-                dest[7] = TChar.CastFrom('-');
+                dest[7] = UtfCharConverter.CastFrom<TChar>('-');
                 Number.WriteTwoDigits((uint)day, dest + 8);
-                dest[10] = TChar.CastFrom(' ');
+                dest[10] = UtfCharConverter.CastFrom<TChar>(' ');
                 dateTime.GetTime(out int hour, out int minute, out int second);
                 Number.WriteTwoDigits((uint)hour, dest + 11);
-                dest[13] = TChar.CastFrom(':');
+                dest[13] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minute, dest + 14);
-                dest[16] = TChar.CastFrom(':');
+                dest[16] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)second, dest + 17);
-                dest[19] = TChar.CastFrom('Z');
+                dest[19] = UtfCharConverter.CastFrom<TChar>('Z');
             }
 
             return true;
@@ -1595,7 +1595,7 @@ namespace System
         //   01234567890123456789012345678
         //   -----------------------------
         //   Tue, 03 Jan 2017 08:08:05 GMT
-        internal static unsafe bool TryFormatR<TChar>(DateTime dateTime, TimeSpan offset, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatR<TChar>(DateTime dateTime, TimeSpan offset, Span<TChar> destination, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (destination.Length < FormatRLength)
             {
@@ -1622,30 +1622,30 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 char c = dayAbbrev[2]; // remove bounds checks on remaining dayAbbrev accesses
-                dest[0] = TChar.CastFrom(dayAbbrev[0]);
-                dest[1] = TChar.CastFrom(dayAbbrev[1]);
-                dest[2] = TChar.CastFrom(c);
-                dest[3] = TChar.CastFrom(',');
-                dest[4] = TChar.CastFrom(' ');
+                dest[0] = UtfCharConverter.CastFrom<TChar>(dayAbbrev[0]);
+                dest[1] = UtfCharConverter.CastFrom<TChar>(dayAbbrev[1]);
+                dest[2] = UtfCharConverter.CastFrom<TChar>(c);
+                dest[3] = UtfCharConverter.CastFrom<TChar>(',');
+                dest[4] = UtfCharConverter.CastFrom<TChar>(' ');
                 Number.WriteTwoDigits((uint)day, dest + 5);
-                dest[7] = TChar.CastFrom(' ');
+                dest[7] = UtfCharConverter.CastFrom<TChar>(' ');
                 c = monthAbbrev[2]; // remove bounds checks on remaining monthAbbrev accesses
-                dest[8] = TChar.CastFrom(monthAbbrev[0]);
-                dest[9] = TChar.CastFrom(monthAbbrev[1]);
-                dest[10] = TChar.CastFrom(c);
-                dest[11] = TChar.CastFrom(' ');
+                dest[8] = UtfCharConverter.CastFrom<TChar>(monthAbbrev[0]);
+                dest[9] = UtfCharConverter.CastFrom<TChar>(monthAbbrev[1]);
+                dest[10] = UtfCharConverter.CastFrom<TChar>(c);
+                dest[11] = UtfCharConverter.CastFrom<TChar>(' ');
                 Number.WriteFourDigits((uint)year, dest + 12);
-                dest[16] = TChar.CastFrom(' ');
+                dest[16] = UtfCharConverter.CastFrom<TChar>(' ');
                 dateTime.GetTime(out int hour, out int minute, out int second);
                 Number.WriteTwoDigits((uint)hour, dest + 17);
-                dest[19] = TChar.CastFrom(':');
+                dest[19] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minute, dest + 20);
-                dest[22] = TChar.CastFrom(':');
+                dest[22] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)second, dest + 23);
-                dest[25] = TChar.CastFrom(' ');
-                dest[26] = TChar.CastFrom('G');
-                dest[27] = TChar.CastFrom('M');
-                dest[28] = TChar.CastFrom('T');
+                dest[25] = UtfCharConverter.CastFrom<TChar>(' ');
+                dest[26] = UtfCharConverter.CastFrom<TChar>('G');
+                dest[27] = UtfCharConverter.CastFrom<TChar>('M');
+                dest[28] = UtfCharConverter.CastFrom<TChar>('T');
             }
 
             return true;
@@ -1660,7 +1660,7 @@ namespace System
         //    01234567890123456789012345
         //    --------------------------
         //    05/25/2017 10:30:15 -08:00
-        internal static unsafe bool TryFormatInvariantG<TChar>(DateTime value, TimeSpan offset, Span<TChar> destination, out int bytesWritten) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatInvariantG<TChar>(DateTime value, TimeSpan offset, Span<TChar> destination, out int bytesWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             int bytesRequired = FormatInvariantGMinLength;
             if (offset.Ticks != NullOffset)
@@ -1681,34 +1681,34 @@ namespace System
             fixed (TChar* dest = &MemoryMarshal.GetReference(destination))
             {
                 Number.WriteTwoDigits((uint)month, dest);
-                dest[2] = TChar.CastFrom('/');
+                dest[2] = UtfCharConverter.CastFrom<TChar>('/');
                 Number.WriteTwoDigits((uint)day, dest + 3);
-                dest[5] = TChar.CastFrom('/');
+                dest[5] = UtfCharConverter.CastFrom<TChar>('/');
                 Number.WriteFourDigits((uint)year, dest + 6);
-                dest[10] = TChar.CastFrom(' ');
+                dest[10] = UtfCharConverter.CastFrom<TChar>(' ');
 
                 value.GetTime(out int hour, out int minute, out int second);
                 Number.WriteTwoDigits((uint)hour, dest + 11);
-                dest[13] = TChar.CastFrom(':');
+                dest[13] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minute, dest + 14);
-                dest[16] = TChar.CastFrom(':');
+                dest[16] = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)second, dest + 17);
 
                 if (offset.Ticks != NullOffset)
                 {
                     int offsetMinutes = (int)(offset.Ticks / TimeSpan.TicksPerMinute);
-                    TChar sign = TChar.CastFrom('+');
+                    TChar sign = UtfCharConverter.CastFrom<TChar>('+');
                     if (offsetMinutes < 0)
                     {
-                        sign = TChar.CastFrom('-');
+                        sign = UtfCharConverter.CastFrom<TChar>('-');
                         offsetMinutes = -offsetMinutes;
                     }
                     (int offsetHours, offsetMinutes) = Math.DivRem(offsetMinutes, 60);
 
-                    dest[19] = TChar.CastFrom(' ');
+                    dest[19] = UtfCharConverter.CastFrom<TChar>(' ');
                     dest[20] = sign;
                     Number.WriteTwoDigits((uint)offsetHours, dest + 21);
-                    dest[23] = TChar.CastFrom(':');
+                    dest[23] = UtfCharConverter.CastFrom<TChar>(':');
                     Number.WriteTwoDigits((uint)offsetMinutes, dest + 24);
                 }
             }

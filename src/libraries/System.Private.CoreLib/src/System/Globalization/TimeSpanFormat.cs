@@ -48,7 +48,7 @@ namespace System.Globalization
         }
 
         /// <summary>Main method called from TimeSpan.TryFormat.</summary>
-        internal static bool TryFormat<TChar>(TimeSpan value, Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? formatProvider) where TChar : unmanaged, IUtfChar<TChar>
+        internal static bool TryFormat<TChar>(TimeSpan value, Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? formatProvider) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(typeof(TChar) == typeof(char) || typeof(TChar) == typeof(byte));
 
@@ -106,7 +106,7 @@ namespace System.Globalization
             g
         }
 
-        internal static unsafe bool TryFormatStandard<TChar>(TimeSpan value, StandardFormat format, ReadOnlySpan<TChar> decimalSeparator, Span<TChar> destination, out int written) where TChar : unmanaged, IUtfChar<TChar>
+        internal static unsafe bool TryFormatStandard<TChar>(TimeSpan value, StandardFormat format, ReadOnlySpan<TChar> decimalSeparator, Span<TChar> destination, out int written) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(format == StandardFormat.C || format == StandardFormat.G || format == StandardFormat.g);
 
@@ -236,7 +236,7 @@ namespace System.Globalization
                 // Write leading '-' if necessary
                 if (value.Ticks < 0)
                 {
-                    *p++ = TChar.CastFrom('-');
+                    *p++ = UtfCharConverter.CastFrom<TChar>('-');
                 }
 
                 // Write day and separator, if necessary
@@ -244,7 +244,7 @@ namespace System.Globalization
                 {
                     Number.WriteDigits(days, p, dayDigits);
                     p += dayDigits;
-                    *p++ = TChar.CastFrom(format == StandardFormat.C ? '.' : ':');
+                    *p++ = UtfCharConverter.CastFrom<TChar>(format == StandardFormat.C ? '.' : ':');
                 }
 
                 // Write "[h]h:mm:ss
@@ -256,12 +256,12 @@ namespace System.Globalization
                 }
                 else
                 {
-                    *p++ = TChar.CastFrom('0' + hours);
+                    *p++ = UtfCharConverter.CastFrom<TChar>('0' + hours);
                 }
-                *p++ = TChar.CastFrom(':');
+                *p++ = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)minutes, p);
                 p += 2;
-                *p++ = TChar.CastFrom(':');
+                *p++ = UtfCharConverter.CastFrom<TChar>(':');
                 Number.WriteTwoDigits((uint)seconds, p);
                 p += 2;
 
@@ -270,7 +270,7 @@ namespace System.Globalization
                 {
                     if (format == StandardFormat.C)
                     {
-                        *p++ = TChar.CastFrom('.');
+                        *p++ = UtfCharConverter.CastFrom<TChar>('.');
                     }
                     else if (decimalSeparator.Length == 1)
                     {
@@ -294,7 +294,7 @@ namespace System.Globalization
         }
 
         /// <summary>Format the TimeSpan instance using the specified format.</summary>
-        private static void FormatCustomized<TChar>(TimeSpan value, scoped ReadOnlySpan<char> format, DateTimeFormatInfo dtfi, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IUtfChar<TChar>
+        private static void FormatCustomized<TChar>(TimeSpan value, scoped ReadOnlySpan<char> format, DateTimeFormatInfo dtfi, ref ValueListBuilder<TChar> result) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             Debug.Assert(dtfi != null);
 
@@ -435,7 +435,7 @@ namespace System.Globalization
                         nextChar = DateTimeFormat.ParseNextChar(format, i);
                         if (nextChar >= 0)
                         {
-                            result.Append(TChar.CastFrom(nextChar));
+                            result.Append(UtfCharConverter.CastFrom<TChar>(nextChar));
                             tokenLen = 2;
                         }
                         else

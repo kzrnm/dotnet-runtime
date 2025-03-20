@@ -1083,13 +1083,13 @@ namespace System
         public static bool operator !=(Guid a, Guid b) => !EqualsCore(a, b);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe int HexsToChars<TChar>(TChar* guidChars, int a, int b) where TChar : unmanaged, IUtfChar<TChar>
+        private static unsafe int HexsToChars<TChar>(TChar* guidChars, int a, int b) where TChar : unmanaged, IBinaryInteger<TChar>
         {
-            guidChars[0] = TChar.CastFrom(HexConverter.ToCharLower(a >> 4));
-            guidChars[1] = TChar.CastFrom(HexConverter.ToCharLower(a));
+            guidChars[0] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(a >> 4));
+            guidChars[1] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(a));
 
-            guidChars[2] = TChar.CastFrom(HexConverter.ToCharLower(b >> 4));
-            guidChars[3] = TChar.CastFrom(HexConverter.ToCharLower(b));
+            guidChars[2] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(b >> 4));
+            guidChars[3] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(b));
 
             return 4;
         }
@@ -1175,7 +1175,7 @@ namespace System
         internal const int TryFormatFlags_CurlyBraces = ('}' << 16) | ('{' << 8);
         internal const int TryFormatFlags_Parens = (')' << 16) | ('(' << 8);
 
-        private bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format) where TChar : unmanaged, IUtfChar<TChar>
+        private bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten, ReadOnlySpan<char> format) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             int flags;
 
@@ -1222,7 +1222,7 @@ namespace System
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] // only used from two callers
-        internal unsafe bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten, int flags) where TChar : unmanaged, IUtfChar<TChar>
+        internal unsafe bool TryFormatCore<TChar>(Span<TChar> destination, out int charsWritten, int flags) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             // The low byte of flags contains the required length.
             if ((byte)flags > destination.Length)
@@ -1241,7 +1241,7 @@ namespace System
                 // The low byte of flags now contains the opening brace char (if any)
                 if ((byte)flags != 0)
                 {
-                    *p++ = TChar.CastFrom((byte)flags);
+                    *p++ = UtfCharConverter.CastFrom<TChar>((byte)flags);
                 }
                 flags >>= 8;
 
@@ -1313,22 +1313,22 @@ namespace System
                     p += HexsToChars(p, _a >> 8, _a);
                     if (flags < 0 /* dash */)
                     {
-                        *p++ = TChar.CastFrom('-');
+                        *p++ = UtfCharConverter.CastFrom<TChar>('-');
                     }
                     p += HexsToChars(p, _b >> 8, _b);
                     if (flags < 0 /* dash */)
                     {
-                        *p++ = TChar.CastFrom('-');
+                        *p++ = UtfCharConverter.CastFrom<TChar>('-');
                     }
                     p += HexsToChars(p, _c >> 8, _c);
                     if (flags < 0 /* dash */)
                     {
-                        *p++ = TChar.CastFrom('-');
+                        *p++ = UtfCharConverter.CastFrom<TChar>('-');
                     }
                     p += HexsToChars(p, _d, _e);
                     if (flags < 0 /* dash */)
                     {
-                        *p++ = TChar.CastFrom('-');
+                        *p++ = UtfCharConverter.CastFrom<TChar>('-');
                     }
                     p += HexsToChars(p, _f, _g);
                     p += HexsToChars(p, _h, _i);
@@ -1338,7 +1338,7 @@ namespace System
                 // The low byte of flags now contains the closing brace char (if any)
                 if ((byte)flags != 0)
                 {
-                    *p = TChar.CastFrom((byte)flags);
+                    *p = UtfCharConverter.CastFrom<TChar>((byte)flags);
                 }
 
                 Debug.Assert(p == guidChars + charsWritten - ((byte)flags != 0 ? 1 : 0));
@@ -1347,7 +1347,7 @@ namespace System
             return true;
         }
 
-        private bool TryFormatX<TChar>(Span<TChar> dest, out int charsWritten) where TChar : unmanaged, IUtfChar<TChar>
+        private bool TryFormatX<TChar>(Span<TChar> dest, out int charsWritten) where TChar : unmanaged, IBinaryInteger<TChar>
         {
             if (dest.Length < 68)
             {
@@ -1356,33 +1356,33 @@ namespace System
             }
 
             // {0xdddddddd,0xdddd,0xdddd,{0xdd,0xdd,0xdd,0xdd,0xdd,0xdd,0xdd,0xdd}}
-            dest[0]  = TChar.CastFrom('{');
-            dest[1]  = TChar.CastFrom('0');
-            dest[2]  = TChar.CastFrom('x');
-            dest[3]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 28));
-            dest[4]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 24));
-            dest[5]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 20));
-            dest[6]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 16));
-            dest[7]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 12));
-            dest[8]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 8));
-            dest[9]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 4));
-            dest[10] = TChar.CastFrom(HexConverter.ToCharLower(_a));
-            dest[11] = TChar.CastFrom(',');
-            dest[12] = TChar.CastFrom('0');
-            dest[13] = TChar.CastFrom('x');
-            dest[14] = TChar.CastFrom(HexConverter.ToCharLower(_b >> 12));
-            dest[15] = TChar.CastFrom(HexConverter.ToCharLower(_b >> 8));
-            dest[16] = TChar.CastFrom(HexConverter.ToCharLower(_b >> 4));
-            dest[17] = TChar.CastFrom(HexConverter.ToCharLower(_b));
-            dest[18] = TChar.CastFrom(',');
-            dest[19] = TChar.CastFrom('0');
-            dest[20] = TChar.CastFrom('x');
-            dest[21] = TChar.CastFrom(HexConverter.ToCharLower(_c >> 12));
-            dest[22] = TChar.CastFrom(HexConverter.ToCharLower(_c >> 8));
-            dest[23] = TChar.CastFrom(HexConverter.ToCharLower(_c >> 4));
-            dest[24] = TChar.CastFrom(HexConverter.ToCharLower(_c));
-            dest[25] = TChar.CastFrom(',');
-            dest[26] = TChar.CastFrom('{');
+            dest[0]  = UtfCharConverter.CastFrom<TChar>('{');
+            dest[1]  = UtfCharConverter.CastFrom<TChar>('0');
+            dest[2]  = UtfCharConverter.CastFrom<TChar>('x');
+            dest[3]  = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a >> 28));
+            dest[4]  = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a >> 24));
+            dest[5]  = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a >> 20));
+            dest[6]  = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a >> 16));
+            dest[7]  = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a >> 12));
+            dest[8]  = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a >> 8));
+            dest[9]  = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a >> 4));
+            dest[10] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_a));
+            dest[11] = UtfCharConverter.CastFrom<TChar>(',');
+            dest[12] = UtfCharConverter.CastFrom<TChar>('0');
+            dest[13] = UtfCharConverter.CastFrom<TChar>('x');
+            dest[14] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_b >> 12));
+            dest[15] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_b >> 8));
+            dest[16] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_b >> 4));
+            dest[17] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_b));
+            dest[18] = UtfCharConverter.CastFrom<TChar>(',');
+            dest[19] = UtfCharConverter.CastFrom<TChar>('0');
+            dest[20] = UtfCharConverter.CastFrom<TChar>('x');
+            dest[21] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_c >> 12));
+            dest[22] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_c >> 8));
+            dest[23] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_c >> 4));
+            dest[24] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(_c));
+            dest[25] = UtfCharConverter.CastFrom<TChar>(',');
+            dest[26] = UtfCharConverter.CastFrom<TChar>('{');
             WriteHex(dest, 27, _d);
             WriteHex(dest, 32, _e);
             WriteHex(dest, 37, _f);
@@ -1391,21 +1391,21 @@ namespace System
             WriteHex(dest, 52, _i);
             WriteHex(dest, 57, _j);
             WriteHex(dest, 62, _k, appendComma: false);
-            dest[66] = TChar.CastFrom('}');
-            dest[67] = TChar.CastFrom('}');
+            dest[66] = UtfCharConverter.CastFrom<TChar>('}');
+            dest[67] = UtfCharConverter.CastFrom<TChar>('}');
             charsWritten = 68;
             return true;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static void WriteHex(Span<TChar> dest, int offset, int val, bool appendComma = true)
             {
-                dest[offset + 0] = TChar.CastFrom('0');
-                dest[offset + 1] = TChar.CastFrom('x');
-                dest[offset + 2] = TChar.CastFrom(HexConverter.ToCharLower(val >> 4));
-                dest[offset + 3] = TChar.CastFrom(HexConverter.ToCharLower(val));
+                dest[offset + 0] = UtfCharConverter.CastFrom<TChar>('0');
+                dest[offset + 1] = UtfCharConverter.CastFrom<TChar>('x');
+                dest[offset + 2] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(val >> 4));
+                dest[offset + 3] = UtfCharConverter.CastFrom<TChar>(HexConverter.ToCharLower(val));
                 if (appendComma)
                 {
-                    dest[offset + 4] = TChar.CastFrom(',');
+                    dest[offset + 4] = UtfCharConverter.CastFrom<TChar>(',');
                 }
             }
         }
