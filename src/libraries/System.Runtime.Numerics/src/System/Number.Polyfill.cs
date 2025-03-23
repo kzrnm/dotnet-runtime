@@ -14,109 +14,62 @@ namespace System
 
     internal static partial class Number
     {
-        internal static bool AllowHyphenDuringParsing(this NumberFormatInfo info)
-        {
-            string negativeSign = info.NegativeSign;
-            return negativeSign.Length == 1 &&
-                   negativeSign[0] switch
-                   {
-                       '\u2012' or         // Figure Dash
-                       '\u207B' or         // Superscript Minus
-                       '\u208B' or         // Subscript Minus
-                       '\u2212' or         // Minus Sign
-                       '\u2796' or         // Heavy Minus Sign
-                       '\uFE63' or         // Small Hyphen-Minus
-                       '\uFF0D' => true,   // Fullwidth Hyphen-Minus
-                       _ => false
-                   };
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(AllowHyphenDuringParsing))]
+        internal static bool AllowHyphenDuringParsing(this NumberFormatInfo info);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> PositiveSignTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.PositiveSign);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(PositiveSignTChar))]
+        internal static extern ReadOnlySpan<TChar> PositiveSignTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> NegativeSignTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.NegativeSign);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(NegativeSignTChar))]
+        internal static extern ReadOnlySpan<TChar> NegativeSignTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> CurrencySymbolTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.CurrencySymbol);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(CurrencySymbolTChar))]
+        internal static extern ReadOnlySpan<TChar> CurrencySymbolTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> PercentSymbolTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.PercentSymbol);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(PercentSymbolTChar))]
+        internal static extern ReadOnlySpan<TChar> PercentSymbolTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> PerMilleSymbolTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.PerMilleSymbol);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(PerMilleSymbolTChar))]
+        internal static extern ReadOnlySpan<TChar> PerMilleSymbolTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> CurrencyDecimalSeparatorTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.CurrencyDecimalSeparator);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(CurrencyDecimalSeparatorTChar))]
+        internal static extern ReadOnlySpan<TChar> CurrencyDecimalSeparatorTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> CurrencyGroupSeparatorTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.CurrencyGroupSeparator);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(CurrencyGroupSeparatorTChar))]
+        internal static extern ReadOnlySpan<TChar> CurrencyGroupSeparatorTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> NumberDecimalSeparatorTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.NumberDecimalSeparator);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(NumberDecimalSeparatorTChar))]
+        internal static extern ReadOnlySpan<TChar> NumberDecimalSeparatorTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> NumberGroupSeparatorTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.NumberGroupSeparator);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(NumberGroupSeparatorTChar))]
+        internal static extern ReadOnlySpan<TChar> NumberGroupSeparatorTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> PercentDecimalSeparatorTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.PercentDecimalSeparator);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(PercentDecimalSeparatorTChar))]
+        internal static extern ReadOnlySpan<TChar> PercentDecimalSeparatorTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static ReadOnlySpan<TChar> PercentGroupSeparatorTChar<TChar>(this NumberFormatInfo info)
-            where TChar : unmanaged, IBinaryInteger<TChar>
-        {
-            Debug.Assert(typeof(TChar) == typeof(char));
-            return MemoryMarshal.Cast<char, TChar>(info.PercentGroupSeparator);
-        }
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = nameof(PercentGroupSeparatorTChar))]
+        internal static extern ReadOnlySpan<TChar> PercentGroupSeparatorTChar<TChar>(this NumberFormatInfo info)
+            where TChar : unmanaged, IBinaryInteger<TChar>;
     }
 }
