@@ -492,16 +492,16 @@ namespace System
 
             Span<byte> bytes = MemoryMarshal.AsBytes(new Span<GuidResult>(ref result));
             int invalidIfNegative = 0;
-            bytes[0] = DecodeByte(guidString[6],   guidString[7],  ref invalidIfNegative);
-            bytes[1] = DecodeByte(guidString[4],   guidString[5],  ref invalidIfNegative);
-            bytes[2] = DecodeByte(guidString[2],   guidString[3],  ref invalidIfNegative);
-            bytes[3] = DecodeByte(guidString[0],   guidString[1],  ref invalidIfNegative);
-            bytes[4] = DecodeByte(guidString[11],  guidString[12], ref invalidIfNegative);
-            bytes[5] = DecodeByte(guidString[9],   guidString[10], ref invalidIfNegative);
-            bytes[6] = DecodeByte(guidString[16],  guidString[17], ref invalidIfNegative);
-            bytes[7] = DecodeByte(guidString[14],  guidString[15], ref invalidIfNegative);
-            bytes[8] = DecodeByte(guidString[19],  guidString[20], ref invalidIfNegative);
-            bytes[9] = DecodeByte(guidString[21],  guidString[22], ref invalidIfNegative);
+            bytes[00] = DecodeByte(guidString[06], guidString[07], ref invalidIfNegative);
+            bytes[01] = DecodeByte(guidString[04], guidString[05], ref invalidIfNegative);
+            bytes[02] = DecodeByte(guidString[02], guidString[03], ref invalidIfNegative);
+            bytes[03] = DecodeByte(guidString[00], guidString[01], ref invalidIfNegative);
+            bytes[04] = DecodeByte(guidString[11], guidString[12], ref invalidIfNegative);
+            bytes[05] = DecodeByte(guidString[09], guidString[10], ref invalidIfNegative);
+            bytes[06] = DecodeByte(guidString[16], guidString[17], ref invalidIfNegative);
+            bytes[07] = DecodeByte(guidString[14], guidString[15], ref invalidIfNegative);
+            bytes[08] = DecodeByte(guidString[19], guidString[20], ref invalidIfNegative);
+            bytes[09] = DecodeByte(guidString[21], guidString[22], ref invalidIfNegative);
             bytes[10] = DecodeByte(guidString[24], guidString[25], ref invalidIfNegative);
             bytes[11] = DecodeByte(guidString[26], guidString[27], ref invalidIfNegative);
             bytes[12] = DecodeByte(guidString[28], guidString[29], ref invalidIfNegative);
@@ -1141,7 +1141,7 @@ namespace System
                         guidSize = 0;
                         ThrowBadGuidFormatSpecification();
                         break;
-                };
+                }
             }
 
             string guidString = string.FastAllocateString(guidSize);
@@ -1356,16 +1356,16 @@ namespace System
             }
 
             // {0xdddddddd,0xdddd,0xdddd,{0xdd,0xdd,0xdd,0xdd,0xdd,0xdd,0xdd,0xdd}}
-            dest[0]  = TChar.CastFrom('{');
-            dest[1]  = TChar.CastFrom('0');
-            dest[2]  = TChar.CastFrom('x');
-            dest[3]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 28));
-            dest[4]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 24));
-            dest[5]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 20));
-            dest[6]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 16));
-            dest[7]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 12));
-            dest[8]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 8));
-            dest[9]  = TChar.CastFrom(HexConverter.ToCharLower(_a >> 4));
+            dest[00] = TChar.CastFrom('{');
+            dest[01] = TChar.CastFrom('0');
+            dest[02] = TChar.CastFrom('x');
+            dest[03] = TChar.CastFrom(HexConverter.ToCharLower(_a >> 28));
+            dest[04] = TChar.CastFrom(HexConverter.ToCharLower(_a >> 24));
+            dest[05] = TChar.CastFrom(HexConverter.ToCharLower(_a >> 20));
+            dest[06] = TChar.CastFrom(HexConverter.ToCharLower(_a >> 16));
+            dest[07] = TChar.CastFrom(HexConverter.ToCharLower(_a >> 12));
+            dest[08] = TChar.CastFrom(HexConverter.ToCharLower(_a >> 8));
+            dest[09] = TChar.CastFrom(HexConverter.ToCharLower(_a >> 4));
             dest[10] = TChar.CastFrom(HexConverter.ToCharLower(_a));
             dest[11] = TChar.CastFrom(',');
             dest[12] = TChar.CastFrom('0');
