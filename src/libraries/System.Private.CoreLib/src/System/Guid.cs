@@ -1249,7 +1249,7 @@ namespace System
                 {
                     // Vectorized implementation for D, N, P and B formats:
                     // [{|(]dddddddd[-]dddd[-]dddd[-]dddd[-]dddddddddddd[}|)]
-                    (Vector128<byte> vecX, Vector128<byte> vecY, Vector128<byte> vecZ) = FormatGuidVector128Utf8(this, flags < 0 /* dash */);
+                    (Vector128<byte> hexLow, Vector128<byte> hexHigh) = FormatGuidVector128Utf8();
 
                     if (typeof(TChar) == typeof(byte))
                     {
@@ -1257,36 +1257,84 @@ namespace System
                         if (flags < 0 /* dash */)
                         {
                             // We need to merge these vectors in this order:
-                            // xxxxxxxxxxxxxxxx
-                            //                     yyyyyyyyyyyyyyyy
+                            // ________-____-____-____-____________
+                            // xxxxxxxx________
+                            //                     ____yyyyyyyyyyyy
                             //         zzzzzzzzzzzzzzzz
-                            vecX.Store(pChar);
-                            vecY.Store(pChar + 20);
-                            vecZ.Store(pChar + 8);
+                            hexLow.Store(pChar);
+                            hexHigh.Store(pChar + 20);
+
+                            Vector128<byte> mid;
+                            Vector128<byte> dashesMask = Vector128.Create(0x00002D000000002D, 0x2D000000002D0000).AsByte();
+
+                            if (AdvSimd.Arm64.IsSupported)
+                            {
+                                // Arm64 allows shuffling values using a 32-byte wide look-up table consisting of two 128-bit registers.
+                                // Each byte in the second arg represents a value between 0 to 31 that acts as an index in the look-up table.
+                                // Now we can create a "z" vector by selecting 12 values starting from the 9th element (index 0x08) and
+                                // leaving gaps for dashes. Thus, the wider look-up table allows combining two shuffles, as used in the
+                                // generic else-case, into a single instruction on Arm64.
+                                mid = AdvSimd.Arm64.VectorTableLookup((hexLow, hexHigh),
+                                    Vector128.Create(0x0D0CFF0B0A0908FF, 0xFF13121110FF0F0E).AsByte());
+                                mid |= dashesMask;
+                            }
+                            else
+                            {
+                                Vector128<byte> mid1 = Vector128.Shuffle(hexLow,
+                                    Vector128.Create(0x0D0CFF0B0A0908FF, 0xFFFFFFFFFFFF0F0E).AsByte());
+                                Vector128<byte> mid2 = Vector128.Shuffle(hexHigh,
+                                    Vector128.Create(0xFFFFFFFFFFFFFFFF, 0xFF03020100FFFFFF).AsByte());
+                                mid = (mid1 | mid2 | dashesMask);
+                            }
+
+                            mid.Store(pChar + 8);
                             p += 36;
                         }
                         else
                         {
                             // xxxxxxxxxxxxxxxxyyyyyyyyyyyyyyyy
-                            vecX.Store(pChar);
-                            vecY.Store(pChar + 16);
+                            hexLow.Store(pChar);
+                            hexHigh.Store(pChar + 16);
                             p += 32;
                         }
                     }
                     else
                     {
                         // Expand to UTF-16
-                        (Vector128<ushort> x0, Vector128<ushort> x1) = Vector128.Widen(vecX);
-                        (Vector128<ushort> y0, Vector128<ushort> y1) = Vector128.Widen(vecY);
+                        (Vector128<ushort> x0, Vector128<ushort> x1) = Vector128.Widen(hexLow);
+                        (Vector128<ushort> y0, Vector128<ushort> y1) = Vector128.Widen(hexHigh);
                         ushort* pChar = (ushort*)p;
                         if (flags < 0 /* dash */)
                         {
-                            (Vector128<ushort> z0, Vector128<ushort> z1) = Vector128.Widen(vecZ);
+                            Vector128<byte> mid;
+                            Vector128<byte> dashesMask = Vector128.Create(0x00002D000000002D, 0x2D000000002D0000).AsByte();
+
+                            if (AdvSimd.Arm64.IsSupported)
+                            {
+                                // Arm64 allows shuffling values using a 32-byte wide look-up table consisting of two 128-bit registers.
+                                // Each byte in the second arg represents a value between 0 to 31 that acts as an index in the look-up table.
+                                // Now we can create a "z" vector by selecting 12 values starting from the 9th element (index 0x08) and
+                                // leaving gaps for dashes. Thus, the wider look-up table allows combining two shuffles, as used in the
+                                // generic else-case, into a single instruction on Arm64.
+                                mid = AdvSimd.Arm64.VectorTableLookup((hexLow, hexHigh),
+                                    Vector128.Create(0x0D0CFF0B0A0908FF, 0xFF13121110FF0F0E).AsByte());
+                                mid |= dashesMask;
+                            }
+                            else
+                            {
+                                Vector128<byte> mid1 = Vector128.Shuffle(hexLow,
+                                    Vector128.Create(0x0D0CFF0B0A0908FF, 0xFFFFFFFFFFFF0F0E).AsByte());
+                                Vector128<byte> mid2 = Vector128.Shuffle(hexHigh,
+                                    Vector128.Create(0xFFFFFFFFFFFFFFFF, 0xFF03020100FFFFFF).AsByte());
+                                mid = (mid1 | mid2 | dashesMask);
+                            }
+                            (Vector128<ushort> z0, Vector128<ushort> z1) = Vector128.Widen(mid);
 
                             // We need to merge these vectors in this order:
-                            // xxxxxxxxxxxxxxxx
-                            //                     yyyyyyyyyyyyyyyy
-                            //         zzzzzzzzzzzzzzzz
+                            // ________-____-____-____-____________
+                            // xxxxxxxx________
+                            //                     ____yyyyYYYYYYYY
+                            //         zzzzzzzzZZZZZZZZ
                             x0.Store(pChar);
                             y0.Store(pChar + 20);
                             y1.Store(pChar + 28);
@@ -1296,7 +1344,7 @@ namespace System
                         }
                         else
                         {
-                            // xxxxxxxxxxxxxxxxyyyyyyyyyyyyyyyy
+                            // xxxxxxxxXXXXXXXXyyyyyyyyYYYYYYYY
                             x0.Store(pChar);
                             x1.Store(pChar + 8);
                             y0.Store(pChar + 16);
@@ -1413,11 +1461,9 @@ namespace System
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [CompExactlyDependsOn(typeof(Ssse3))]
         [CompExactlyDependsOn(typeof(AdvSimd.Arm64))]
-        private static (Vector128<byte>, Vector128<byte>, Vector128<byte>) FormatGuidVector128Utf8(Guid value, bool useDashes)
+        private (Vector128<byte>, Vector128<byte>) FormatGuidVector128Utf8()
         {
             Debug.Assert((Ssse3.IsSupported || AdvSimd.Arm64.IsSupported) && BitConverter.IsLittleEndian);
-            // Vectorized implementation for D, N, P and B formats:
-            // [{|(]dddddddd[-]dddd[-]dddd[-]dddd[-]dddddddddddd[}|)]
 
             Vector128<byte> hexMap = Vector128.Create(
                 (byte)'0', (byte)'1', (byte)'2', (byte)'3',
@@ -1425,7 +1471,7 @@ namespace System
                 (byte)'8', (byte)'9', (byte)'a', (byte)'b',
                 (byte)'c', (byte)'d', (byte)'e', (byte)'f');
 
-            Vector128<byte> srcVec = Unsafe.As<Guid, Vector128<byte>>(ref value);
+            Vector128<byte> srcVec = Unsafe.BitCast<Guid, Vector128<byte>>(this);
             (Vector128<byte> hexLow, Vector128<byte> hexHigh) =
                 HexConverter.AsciiToHexVector128(srcVec, hexMap);
 
@@ -1433,51 +1479,7 @@ namespace System
             // we have to shuffle some bytes for _a, _b and _c
             hexLow = Vector128.Shuffle(hexLow.AsInt16(), Vector128.Create(3, 2, 1, 0, 5, 4, 7, 6)).AsByte();
 
-            if (useDashes)
-            {
-                // We divide 32 bytes into 3 x Vector128<byte>:
-                //
-                // ________-____-____-____-____________
-                // xxxxxxxxxxxxxxxx
-                //                     yyyyyyyyyyyyyyyy
-                //         zzzzzzzzzzzzzzzz
-                //
-                // Vector "x" - just one dash, shift all elements after it.
-                Vector128<byte> vecX = Vector128.Shuffle(hexLow,
-                    Vector128.Create(0x706050403020100, 0xD0CFF0B0A0908FF).AsByte());
-
-                // Vector "y" - same here.
-                Vector128<byte> vecY = Vector128.Shuffle(hexHigh,
-                    Vector128.Create(0x7060504FF030201, 0xF0E0D0C0B0A0908).AsByte());
-
-                // Vector "z" - we need to merge some elements of hexLow with hexHigh and add 4 dashes.
-                Vector128<byte> vecZ;
-                Vector128<byte> dashesMask = Vector128.Create(0x00002D000000002D, 0x2D000000002D0000).AsByte();
-                if (AdvSimd.Arm64.IsSupported)
-                {
-                    // Arm64 allows shuffling values using a 32-byte wide look-up table consisting of two 128-bit registers.
-                    // Each byte in the second arg represents a value between 0 to 31 that acts as an index in the look-up table.
-                    // Now we can create a "z" vector by selecting 12 values starting from the 9th element (index 0x08) and
-                    // leaving gaps for dashes. Thus, the wider look-up table allows combining two shuffles, as used in the
-                    // generic else-case, into a single instruction on Arm64.
-                    Vector128<byte> mid = AdvSimd.Arm64.VectorTableLookup((hexLow, hexHigh),
-                        Vector128.Create(0x0D0CFF0B0A0908FF, 0xFF13121110FF0F0E).AsByte());
-                    vecZ = (mid | dashesMask);
-                }
-                else
-                {
-                    Vector128<byte> mid1 = Vector128.Shuffle(hexLow,
-                        Vector128.Create(0x0D0CFF0B0A0908FF, 0xFFFFFFFFFFFF0F0E).AsByte());
-                    Vector128<byte> mid2 = Vector128.Shuffle(hexHigh,
-                        Vector128.Create(0xFFFFFFFFFFFFFFFF, 0xFF03020100FFFFFF).AsByte());
-                    vecZ = (mid1 | mid2 | dashesMask);
-                }
-
-                return (vecX, vecY, vecZ);
-            }
-
-            // N format - no dashes.
-            return (hexLow, hexHigh, default);
+            return (hexLow, hexHigh);
         }
 
         //
