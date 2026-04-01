@@ -34,6 +34,8 @@
              Link="CoreLib\System\Collections\Generic\ValueListBuilder.cs" />
     <Compile Include="$(CommonPath)System\Text\ValueStringBuilder_1.cs"
              Link="CoreLib\System\Text\ValueStringBuilder_1.cs" />
+    <Compile Include="$(CommonPath)System\Number.BigInteger.Common.cs"
+             Link="Common\System\Number.BigInteger.Common.cs" />
     <Compile Include="$(CommonPath)System\Number.Formatting.Common.cs"
              Link="Common\System\Number.Formatting.Common.cs" />
     <Compile Include="$(CommonPath)System\Number.NumberBuffer.cs"
