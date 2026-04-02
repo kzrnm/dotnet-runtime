@@ -110,9 +110,11 @@ namespace System.Tests
             Assert.Equal((new Int128(0xC000_0000_0000_0000, 0x0000_0000_0000_0001), NegativeOne), BinaryIntegerHelper<Int128>.DivRem(MinValuePlusOne, Two));
             Assert.Equal((NegativeOne, Zero), BinaryIntegerHelper<Int128>.DivRem(NegativeTwo, Two));
             Assert.Equal((Zero, NegativeOne), BinaryIntegerHelper<Int128>.DivRem(NegativeOne, Two));
-            Assert.Equal((new Int128(0x0000_0000_0000_0001, 0x0000_0000_0000_0001), Zero), BinaryIntegerHelper<Int128>.DivRem(NegativeOne, UInt64MaxValue));
+            Assert.Equal((Zero, NegativeOne), BinaryIntegerHelper<Int128>.DivRem(NegativeOne, UInt64MaxValue));
             Assert.Equal((new Int128(0x0000_0000_0000_0000, 0x8000_0000_0000_0000), Int64MaxValue), BinaryIntegerHelper<Int128>.DivRem(MaxValue, UInt64MaxValue));
-            Assert.Equal((new Int128(0x0000_0000_0000_0000, 0x8000_0000_0000_0000), Int64MaxValuePlusOne), BinaryIntegerHelper<Int128>.DivRem(MaxValue, UInt64MaxValue));
+            Assert.Equal((new Int128(0xFFFF_FFFF_FFFF_FFFF, 0x0000_0000_0000_0001), Int64MaxValue), BinaryIntegerHelper<Int128>.DivRem(MaxValue, Int64MinValue));
+            Assert.Equal((One, One), BinaryIntegerHelper<Int128>.DivRem(MaxValue, MaxValueMinusOne));
+            Assert.Equal((NegativeOne, Zero), BinaryIntegerHelper<Int128>.DivRem(MaxValue, MinValuePlusOne));
 
             Assert.Equal((Zero, Zero), BinaryIntegerHelper<Int128>.DivRem(Zero, NegativeTwo));
             Assert.Equal((Zero, One), BinaryIntegerHelper<Int128>.DivRem(One, NegativeTwo));
@@ -123,9 +125,8 @@ namespace System.Tests
             Assert.Equal((new Int128(0x3FFF_FFFF_FFFF_FFFF, 0xFFFF_FFFF_FFFF_FFFF), NegativeOne), BinaryIntegerHelper<Int128>.DivRem(MinValuePlusOne, NegativeTwo));
             Assert.Equal((One, Zero), BinaryIntegerHelper<Int128>.DivRem(NegativeTwo, NegativeTwo));
             Assert.Equal((Zero, NegativeOne), BinaryIntegerHelper<Int128>.DivRem(NegativeOne, NegativeTwo));
-            Assert.Equal((Zero, NegativeOne), BinaryIntegerHelper<Int128>.DivRem(NegativeOne, NegativeTwo));
-            Assert.Equal((One, One), BinaryIntegerHelper<Int128>.DivRem(MaxValue, MaxValueMinusOne));
 
+            Assert.Throws<OverflowException>(() => BinaryIntegerHelper<Int128>.DivRem(MinValue, NegativeOne));
             Assert.Throws<DivideByZeroException>(() => BinaryIntegerHelper<Int128>.DivRem(Zero, 0));
             Assert.Throws<DivideByZeroException>(() => BinaryIntegerHelper<Int128>.DivRem(One, 0));
             Assert.Throws<DivideByZeroException>(() => BinaryIntegerHelper<Int128>.DivRem(NegativeOne, 0));
