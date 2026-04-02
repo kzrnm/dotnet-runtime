@@ -136,7 +136,7 @@ namespace System.Numerics
                 SubtractCore(bitsHigh, bitsLow, core);
 
                 // ... and finally merge the result! :-)
-                AddSelf(bits.Slice(n), core);
+                Number.AddBigInteger(bits.Slice(n), core);
 
                 coreBuffer.Dispose();
             }
@@ -348,14 +348,14 @@ namespace System.Numerics
                 }
 
                 pm1.CopyTo(p1);
-                AddSelf(p1, left1);
+                Number.AddBigInteger(p1, left1);
                 SubtractSelf(pm1, ref pm1Sign, left1);
                 p1 = p1.TrimEnd((nuint)0);
                 pm1 = pm1.TrimEnd((nuint)0);
 
                 right0.CopyTo(q1);
                 right0.CopyTo(qm1);
-                AddSelf(q1, right1);
+                Number.AddBigInteger(q1, right1);
                 SubtractSelf(qm1, ref qm1Sign, right1);
                 q1 = q1.TrimEnd((nuint)0);
                 qm1 = qm1.TrimEnd((nuint)0);
@@ -384,14 +384,14 @@ namespace System.Numerics
                 RightShiftOne(z2);
                 SubtractSelf(z2, z3.TrimEnd((nuint)0));
 
-                AddSelf(z1, cm1);
+                Number.AddBigInteger(z1, cm1);
                 RightShiftOne(z1);
-                AddSelf(z1, z0.TrimEnd((nuint)0));
+                Number.AddBigInteger(z1, z0.TrimEnd((nuint)0));
 
                 ArrayPool<nuint>.Shared.Return(pAndQAllFromPool);
 
-                AddSelf(bits.Slice(n), z1.TrimEnd((nuint)0));
-                AddSelf(bits.Slice(n * 2), z2.TrimEnd((nuint)0));
+                Number.AddBigInteger(bits.Slice(n), z1.TrimEnd((nuint)0));
+                Number.AddBigInteger(bits.Slice(n * 2), z2.TrimEnd((nuint)0));
 
                 ArrayPool<nuint>.Shared.Return(cAllFromPool);
             }
@@ -475,7 +475,7 @@ namespace System.Numerics
                 Debug.Assert(ActualLength(core) <= left.Length + 1);
 
                 // ... and finally merge the result! :-)
-                AddSelf(bits.Slice(n), core.TrimEnd((nuint)0));
+                Number.AddBigInteger(bits.Slice(n), core.TrimEnd((nuint)0));
 
                 coreBuffer.Dispose();
             }
@@ -510,7 +510,7 @@ namespace System.Numerics
                 // ... compute high
                 Multiply(leftHigh, right, bitsHigh.Slice(0, leftHigh.Length + right.Length));
 
-                AddSelf(bitsHigh, carry);
+                Number.AddBigInteger(bitsHigh, carry);
 
                 carryBuffer.Dispose();
             }
@@ -582,10 +582,10 @@ namespace System.Numerics
                 int pm1Sign = 1;
                 {
                     v0.CopyTo(p1);
-                    AddSelf(p1, v2);
+                    Number.AddBigInteger(p1, v2);
 
                     p1.CopyTo(pm1);
-                    AddSelf(p1, v1);
+                    Number.AddBigInteger(p1, v1);
 
                     SubtractSelf(pm1, ref pm1Sign, v1);
 
@@ -791,12 +791,12 @@ namespace System.Numerics
                 Debug.Assert(z2Sign >= 0);
                 Debug.Assert(z3Sign >= 0);
 
-                AddSelf(bits.Slice(n), z1.TrimEnd((nuint)0));
-                AddSelf(bits.Slice(2 * n), z2.TrimEnd((nuint)0));
+                Number.AddBigInteger(bits.Slice(n), z1.TrimEnd((nuint)0));
+                Number.AddBigInteger(bits.Slice(2 * n), z2.TrimEnd((nuint)0));
 
                 if (bits.Length >= 3 * n)
                 {
-                    AddSelf(bits.Slice(3 * n), z3.TrimEnd((nuint)0));
+                    Number.AddBigInteger(bits.Slice(3 * n), z3.TrimEnd((nuint)0));
                 }
             }
         }
@@ -969,7 +969,7 @@ namespace System.Numerics
             }
             else if (leftSign > 0)
             {
-                AddSelf(left, right);
+                Number.AddBigInteger(left, right);
             }
             else
             {
@@ -1013,7 +1013,7 @@ namespace System.Numerics
             }
             else if (leftSign < 0)
             {
-                AddSelf(left, right);
+                Number.AddBigInteger(left, right);
             }
             else
             {

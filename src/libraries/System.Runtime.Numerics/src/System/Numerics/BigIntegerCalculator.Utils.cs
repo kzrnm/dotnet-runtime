@@ -102,30 +102,6 @@ namespace System.Numerics
         }
 
         /// <summary>
-        /// Performs widening addition of two limbs plus a carry-in, returning the sum and carry-out.
-        /// On 64-bit: uses 128-bit arithmetic. On 32-bit: uses 64-bit arithmetic.
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static nuint AddWithCarry(nuint a, nuint b, nuint carryIn, out nuint carryOut)
-        {
-            if (nint.Size == 8)
-            {
-                nuint sum1 = a + b;
-                nuint c1 = (sum1 < a) ? 1 : (nuint)0;
-                nuint sum2 = sum1 + carryIn;
-                nuint c2 = (sum2 < sum1) ? 1 : (nuint)0;
-                carryOut = c1 + c2;
-                return sum2;
-            }
-            else
-            {
-                ulong sum = (ulong)a + b + carryIn;
-                carryOut = (uint)(sum >> 32);
-                return (uint)sum;
-            }
-        }
-
-        /// <summary>
         /// Performs widening subtraction of two limbs with a borrow-in, returning the difference and borrow-out.
         /// borrowOut is 0 (no borrow) or 1 (borrow occurred).
         /// </summary>

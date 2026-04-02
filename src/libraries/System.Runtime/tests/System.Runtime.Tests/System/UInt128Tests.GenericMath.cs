@@ -100,6 +100,51 @@ namespace System.Tests
         //
 
         [Fact]
+        public static void DivRemRandom()
+        {
+            for (int i = 0; i < 10_000_000; i++)
+            {
+                var a = NextUInt64();
+                var b = NextUInt64();
+                var c = NextUInt64();
+                var d = NextUInt64();
+
+                Run(a, b);
+                Run(new(a, b), c);
+                Run(new(a, b), new(c, d));
+
+                if (long.MaxValue < c) continue;
+                var quo = ulong.MaxValue - NextUInt64();
+                var hi = Math.BigMul(quo, c, out var lo);
+                var rem = NextUInt64(BitOperations.Log2(c));
+
+                lo += rem;
+                if (lo < rem)
+                    ++hi;
+                Run(new(hi, lo), c);
+            }
+
+            static void Run(UInt128 a, UInt128 b)
+            {
+                var (q, r) = UInt128.DivRem(a, b);
+                if (b * q + r != a) throw new Exception();
+
+                (b, a) = (a, b);
+
+                (q, r) = UInt128.DivRem(a, b);
+                if (b * q + r != a) throw new Exception();
+            }
+
+            static ulong NextUInt64(int log = 64)
+            {
+                var msb = Random.Shared.Next(log);
+                var top = 1L << msb;
+                var v = msb == 63 ? Random.Shared.NextInt64() : Random.Shared.NextInt64(top);
+                return (ulong)(v | top);
+            }
+        }
+
+        [Fact]
         public static void DivRemTest()
         {
             Assert.Equal((Zero, Zero), BinaryIntegerHelper<UInt128>.DivRem(Zero, Two));
@@ -111,6 +156,12 @@ namespace System.Tests
             Assert.Equal((new UInt128(0x4000_0000_0000_0000, 0x0000_0000_0000_0000), One), BinaryIntegerHelper<UInt128>.DivRem(Int128MaxValuePlusTwo, Two));
             Assert.Equal((Int128MaxValue, Zero), BinaryIntegerHelper<UInt128>.DivRem(MaxValueMinusOne, Two));
             Assert.Equal((Int128MaxValue, One), BinaryIntegerHelper<UInt128>.DivRem(MaxValue, Two));
+            Assert.Equal((new UInt128(0x0000_0000_0000_0001, 0x0000_0000_0000_0001), Zero), BinaryIntegerHelper<UInt128>.DivRem(MaxValue, UInt64MaxValue));
+            Assert.Equal((new UInt128(0x0000_0000_0000_0000, 0x8000_0000_0000_0000), Int64MaxValue), BinaryIntegerHelper<UInt128>.DivRem(Int128MaxValue, UInt64MaxValue));
+            Assert.Equal((new UInt128(0x0000_0000_0000_0000, 0x8000_0000_0000_0000), Int64MaxValuePlusOne), BinaryIntegerHelper<UInt128>.DivRem(Int128MaxValuePlusOne, UInt64MaxValue));
+            Assert.Equal((UInt32MaxValue, UInt32MaxValue), BinaryIntegerHelper<UInt128>.DivRem(new UInt128(0x0000_0000_FFFF_FFFF, 0x0000_0000_0000_0000), UInt64MaxValue));
+            Assert.Equal((UInt64MaxValue, new UInt128(0x0000_0000_0000_0000, 0x0000_FFFF_FFFF_FFFE)), BinaryIntegerHelper<UInt128>.DivRem(new UInt128(0x0000_FFFF_FFFF_FFFE, 0xFFFF_FFFF_FFFF_FFFF), new UInt128(0x0000_0000_0000_0000, 0x0000_FFFF_FFFF_FFFF)));
+            Assert.Equal((Two, One), BinaryIntegerHelper<UInt128>.DivRem(MaxValue, Int128MaxValue));
 
             Assert.Equal((Zero, Zero), BinaryIntegerHelper<UInt128>.DivRem(Zero, MaxValueMinusOne));
             Assert.Equal((Zero, One), BinaryIntegerHelper<UInt128>.DivRem(One, MaxValueMinusOne));

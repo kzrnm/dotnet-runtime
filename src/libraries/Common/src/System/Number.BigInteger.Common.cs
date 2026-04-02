@@ -10,7 +10,84 @@ namespace System
 {
     internal static partial class Number
     {
-        public static void DivideGrammarSchool(Span<nuint> left, ReadOnlySpan<nuint> right, Span<nuint> quotient)
+        /// <summary>
+        /// Performs widening addition of two limbs plus a carry-in, returning the sum and carry-out.
+        /// On 64-bit: uses 128-bit arithmetic. On 32-bit: uses 64-bit arithmetic.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static nuint AddWithCarry(nuint a, nuint b, nuint carryIn, out nuint carryOut)
+        {
+            if (nint.Size == 8)
+            {
+                nuint sum1 = a + b;
+                nuint c1 = (sum1 < a) ? 1 : (nuint)0;
+                nuint sum2 = sum1 + carryIn;
+                nuint c2 = (sum2 < sum1) ? 1 : (nuint)0;
+                carryOut = c1 + c2;
+                return sum2;
+            }
+            else
+            {
+                ulong sum = (ulong)a + b + carryIn;
+                carryOut = (uint)(sum >> 32);
+                return (uint)sum;
+            }
+        }
+
+        /// <summary>
+        /// Update `left` to compute `left += right`. The range `left[(right.Length)..]` remains unchanged, and the carry-out is returned.
+        /// </summary>
+        public static nuint AddBigIntegerCarryOut(Span<nuint> left, ReadOnlySpan<nuint> right)
+        {
+            Debug.Assert(left.Length >= right.Length);
+
+            if (right.Length == 0)
+            {
+                return 0;
+            }
+
+            nuint carry = 0;
+            _ = left[right.Length - 1];
+
+            for (int i = 0; i < right.Length; i++)
+            {
+                left[i] = AddWithCarry(left[i], right[i], carry, out carry);
+            }
+
+            // To fully update `left`, the remaining elements need to be processed as shown below.
+            //   for (; carry != 0 && i < left.Length; i++)
+            //   {
+            //       nuint sum = left[i] + carry;
+            //       carry = (sum < carry) ? 1 : (nuint)0;
+            //       left[i] = sum;
+            //   }
+
+            return carry;
+        }
+
+        /// <summary>
+        /// Update `left` to compute `left += right`.
+        /// </summary>
+        public static void AddBigInteger(Span<nuint> left, ReadOnlySpan<nuint> right)
+        {
+            Debug.Assert(left.Length >= right.Length);
+
+            nuint carry = AddBigIntegerCarryOut(left, right);
+
+            for (int i = right.Length; carry != 0 && i < left.Length; i++)
+            {
+                nuint sum = left[i] + carry;
+                carry = (sum < carry) ? 1 : (nuint)0;
+                left[i] = sum;
+            }
+
+            Debug.Assert(carry == 0);
+        }
+
+        /// <summary>
+        /// quotient = left / right, and left is mutated to left % right.
+        /// </summary>
+        public static void DivideBigInteger(Span<nuint> left, ReadOnlySpan<nuint> right, Span<nuint> quotient)
         {
             Debug.Assert(left.Length >= 1);
             Debug.Assert(right.Length >= 1);
@@ -24,7 +101,8 @@ namespace System
 #endif
                 );
 
-            // Executes the "grammar-school" algorithm for computing q = a / b.
+            // Executes the "grammar-school" algorithm a.k.a. Knuth's algorithm
+            // for computing q = a / b.
             // Before calculating q_i, we get more bits into the highest bit
             // block of the divisor. Thus, guessing digits of the quotient
             // will be more precise. Additionally we'll get r = a % b.
@@ -68,7 +146,11 @@ namespace System
 
                 // First guess for the current digit of the quotient,
                 // which naturally must have only native-width bits...
-                nuint digit = valHi1 < divHi ? DivRem(valHi1, valHi0, divHi, out _) : nuint.MaxValue;
+                nuint digit = valHi1 < divHi
+                    ? (nint.Size == 8
+                        ? (nuint)DivRem(valHi1, valHi0, divHi).Quotient
+                        : (nuint)((((ulong)valHi1 << 32) | valHi0) / divHi))
+                    : nuint.MaxValue;
 
                 // Our first guess may be a little bit to big
                 while (DivideGuessTooBig(digit, valHi1, valHi0, valLo, divHi, divLo))
@@ -85,7 +167,7 @@ namespace System
                         Debug.Assert(carry == t + 1);
 
                         // Our guess was still exactly one too high
-                        carry = AddDivisor(left.Slice(n), right);
+                        carry = AddBigIntegerCarryOut(left.Slice(n), right);
                         --digit;
 
                         Debug.Assert(carry == 1);
@@ -102,37 +184,6 @@ namespace System
                 {
                     left[i] = 0;
                 }
-            }
-
-            static nuint AddDivisor(Span<nuint> left, ReadOnlySpan<nuint> right)
-            {
-                Debug.Assert(left.Length >= right.Length);
-
-                // Repairs the dividend, if the last subtract was too much
-
-                nuint carry = 0;
-
-                for (int i = 0; i < right.Length; i++)
-                {
-                    ref nuint leftElement = ref left[i];
-
-                    if (nint.Size == 8)
-                    {
-                        leftElement += right[i];
-                        nuint c1 = (leftElement < right[i]) ? 1u : 0;
-                        leftElement += carry;
-                        nuint c2 = (leftElement < carry) ? 1u : 0;
-                        carry = c1 + c2;
-                    }
-                    else
-                    {
-                        ulong digit = leftElement + carry + right[i];
-                        leftElement = unchecked((uint)digit);
-                        carry = (uint)(digit >> 32);
-                    }
-                }
-
-                return carry;
             }
 
             static nuint SubtractDivisor(Span<nuint> left, ReadOnlySpan<nuint> right, nuint multiplier)
@@ -188,38 +239,50 @@ namespace System
                 left -= lo;
                 return hi;
             }
+        }
 
-            static bool DivideGuessTooBig(nuint q, nuint valHi1, nuint valHi0,
-                                                    nuint valLo, nuint divHi, nuint divLo)
+        /// <summary>
+        /// Return: (divHi:divLo) * q > (valHi:valMi:valLo)
+        /// </summary>
+        private static bool DivideGuessTooBig(
+            nuint q,
+            nuint valHi, nuint valMi, nuint valLo,
+            nuint divHi, nuint divLo)
+        {
+            // We multiply the two most significant limbs of the divisor
+            // with the current guess for the quotient. If those are bigger
+            // than the three most significant limbs of the current dividend
+            // we return true, which means the current guess is still too big.
+
+            if (nint.Size == 8)
             {
-                // We multiply the two most significant limbs of the divisor
-                // with the current guess for the quotient. If those are bigger
-                // than the three most significant limbs of the current dividend
-                // we return true, which means the current guess is still too big.
+                ulong chkHi = ulong.BigMul(divHi, q, out ulong chkHiLo);
+                ulong chkLoHi = ulong.BigMul(divLo, q, out ulong chkLo);
+                ulong chkMi = chkHiLo + chkLoHi;
 
-                if (nint.Size == 8)
+                if (chkMi < chkLoHi)
                 {
-                    nuint chkHiHi = nuint.BigMul(divHi, q, out nuint chkHiLo);
-                    nuint chkLoHi = nuint.BigMul(divLo, q, out nuint chkLoLo);
-
-                    chkHiLo += chkLoHi;
-                    if (chkHiLo < chkLoHi)
-                    {
-                        chkHiHi++;
-                    }
-
-                    return (chkHiHi > valHi1)
-                        || ((chkHiHi == valHi1) && ((chkHiLo > valHi0) || ((chkHiLo == valHi0) && (chkLoLo > valLo))));
+                    chkHi++;
                 }
-                else
-                {
-                    ulong valHi = valHi0 | ((ulong)valHi1 << 32);
-                    return DivideGuessTooBigUInt32(q, valHi, (uint)valLo, (uint)divHi, (uint)divLo);
-                }
+
+                return (chkHi > valHi)
+                    || ((chkHi == valHi) && ((chkMi > valMi) || ((chkMi == valMi) && (chkLo > valLo))));
+            }
+            else
+            {
+                ulong valMiLo = ((ulong)valMi << 32) | valLo;
+                return DivideGuessTooBig(q, (uint)valMi, valMiLo, (uint)divHi, (uint)divLo, out _);
             }
         }
 
-        private static bool DivideGuessTooBigUInt32(ulong q, ulong valHi, uint valLo, uint divHi, uint divLo)
+        /// <summary>
+        /// Return: (divHi:divLo) * q > (valHi:valLo) and remainder = (valHi:valLo) - (divHi:divLo) * q if result is false.
+        /// </summary>
+        private static bool DivideGuessTooBig(
+            ulong q,
+            uint valHi, ulong valLo,
+            uint divHi, uint divLo,
+            out ulong remainder)
         {
             Debug.Assert(q <= 0xFFFFFFFF);
 
@@ -228,220 +291,133 @@ namespace System
             // than the three most significant limbs of the current dividend
             // we return true, which means the current guess is still too big.
 
-            ulong chkHi = divHi * q;
-            ulong chkLo = divLo * q;
+            ulong hi = divHi * q;
+            ulong chkLo = divLo * q + (hi << 32);
+            uint chkHi = (uint)(hi >> 32);
 
-            chkHi += (chkLo >> 32);
-            chkLo = (uint)(chkLo);
-
-            return (chkHi > valHi) || ((chkHi == valHi) && (chkLo > valLo));
-        }
-
-        private static ulong DivRemKnuth(ulong hi, ulong lo, ulong divisor, out ulong remainder)
-        {
-            // Knuth's algorithm
-            // Perform 128-bit/64-bit division by splitting it into 32-bit parts.
-            //
-            // dividend = | hiHi | hiLo | loHi | loLo |
-            //  divisor = |      |      |  dHi |  dLo |
-
-            int shift = BitOperations.LeadingZeroCount(divisor);
-            if (shift > 0)
+            if ((chkHi > valHi) || ((chkHi == valHi) && (chkLo > valLo)))
             {
-                divisor <<= shift;
-                hi = (hi << shift) | (lo >> (64 - shift));
-                lo <<= shift;
+                remainder = 0;
+                return true;
             }
 
-            uint hiHi = (uint)(hi >> 32);
-            uint hiLo = (uint)hi;
-            uint loHi = (uint)(lo >> 32);
-            uint loLo = (uint)lo;
-            uint dHi = (uint)(divisor >> 32);
-            uint dLo = (uint)divisor;
+            remainder = valLo - chkLo;
 
-            nuint quotient;
+            Debug.Assert(valHi == chkHi || (valHi == chkHi + 1 && chkLo < valLo));
+            Debug.Assert(remainder < (divLo | ((ulong)divHi << 32)));
 
-            {
-                // First guess for the current digit of the quotient,
-                // which naturally must have only 32 bits...
-                ulong digit = hi / dHi;
-
-                if (digit > 0xFFFFFFFF)
-                {
-                    digit = 0xFFFFFFFF;
-                }
-
-                // Our first guess may be a little bit to big
-                while (DivideGuessTooBigUInt32(digit, hi, loHi, dHi, dLo))
-                {
-                    --digit;
-                }
-
-                if (digit > 0)
-                {
-                    // Now it's time to subtract our current quotient
-                    ulong carry;
-                    {
-                        // SubtractDivisor([hiHi, hiLo, loHi], divisor, digit)
-                        carry = dLo * digit;
-                        uint dd = (uint)carry;
-                        carry >>= 32;
-                        if (loHi < dd)
-                        {
-                            ++carry;
-                        }
-                        loHi -= dd;
-
-                        carry += dHi * digit;
-                        dd = (uint)carry;
-                        carry >>= 32;
-                        if (hiLo < dd)
-                        {
-                            ++carry;
-                        }
-                        hiLo -= dd;
-                    }
-
-                    if (carry != hiHi)
-                    {
-                        --digit;
-                        Debug.Assert(carry == (hiHi + 1));
-
-                        // Our guess was still exactly one too high
-                        {
-                            // AddDivisor([hiHi, hiLo, loHi], divisor)
-                            ulong dd = loHi * dLo;
-                            loHi = (uint)dd;
-
-                            dd = (hiLo + (dd >> 32)) * dHi;
-                            hiLo = (uint)dd;
-                            Debug.Assert((dd >> 32) == 1);
-                        }
-                    }
-                }
-
-                quotient = (nuint)(digit << 32);
-            }
-
-            {
-                // First guess for the current digit of the quotient,
-                // which naturally must have only 32 bits...
-                ulong mi = ((ulong)hiLo << 32) | loHi;
-                ulong digit = mi / dHi;
-
-                if (digit > 0xFFFFFFFF)
-                {
-                    digit = 0xFFFFFFFF;
-                }
-
-                // Our first guess may be a little bit to big
-                while (DivideGuessTooBigUInt32(digit, mi, loLo, dHi, dLo))
-                {
-                    --digit;
-                }
-
-                if (digit > 0)
-                {
-                    // Now it's time to subtract our current quotient
-                    ulong carry;
-                    {
-                        // SubtractDivisor([hiLo, loHi, loLo], divisor, digit)
-                        carry = dLo * digit;
-                        uint dd = (uint)carry;
-                        carry >>= 32;
-                        if (loLo < dd)
-                        {
-                            ++carry;
-                        }
-                        loLo -= dd;
-
-                        carry += dHi * digit;
-                        dd = (uint)carry;
-                        carry >>= 32;
-                        if (loHi < dd)
-                        {
-                            ++carry;
-                        }
-                        loHi -= dd;
-                    }
-
-                    if (carry != hiLo)
-                    {
-                        --digit;
-                        Debug.Assert(carry == (hiLo + 1));
-
-                        // Our guess was still exactly one too high
-                        {
-                            // AddDivisor([hiLo, loHi, loLo], divisor)
-                            ulong dd = (loHi + ((loLo * dLo) >> 32)) * dHi;
-                            Debug.Assert((dd >> 32) == 1);
-                        }
-                    }
-                }
-
-                quotient |= (uint)digit;
-            }
-
-            remainder = (lo - divisor * quotient) >> shift;
-            return quotient;
+            return false;
         }
 
         /// <summary>
         /// Widening divide: (hi:lo) / divisor -> (quotient, remainder).
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static nuint DivRem(nuint hi, nuint lo, nuint divisor, out nuint remainder)
+        public static (ulong Quotient, ulong Remainder) DivRem(ulong hi, ulong lo, ulong divisor)
         {
-            if (nint.Size == 8)
+            // Compute (hi * 2^64 + lo) / divisor.
+            // hi < divisor is guaranteed by callers, so quotient fits in 64 bits.
+            Debug.Assert(hi < divisor);
+
+            if (hi == 0)
             {
-                // Compute (hi * 2^64 + lo) / divisor.
-                // hi < divisor is guaranteed by callers, so quotient fits in 64 bits.
-                Debug.Assert(hi < (ulong)divisor || divisor == 0);
-
-                if (hi == 0)
-                {
-                    (ulong q, ulong r) = Math.DivRem(lo, (ulong)divisor);
-                    remainder = (nuint)r;
-                    return (nuint)q;
-                }
-
-                // When divisor fits in 32 bits, split lo into two 32-bit halves
-                // and chain two native 64-bit divisions (avoids UInt128 overhead):
-                //   (hi * 2^32 + lo_hi) / divisor -> (q_hi, r1) [fits: hi < divisor < 2^32]
-                //   (r1 * 2^32 + lo_lo) / divisor -> (q_lo, r2) [fits: r1 < divisor < 2^32]
-                if ((ulong)divisor <= uint.MaxValue)
-                {
-                    ulong lo_hi = (ulong)lo >> 32;
-                    ulong lo_lo = (ulong)lo & 0xFFFFFFFF;
-
-                    (ulong q_hi, ulong r1) = Math.DivRem(((ulong)hi << 32) | lo_hi, divisor);
-                    (ulong q_lo, ulong r2) = Math.DivRem((r1 << 32) | lo_lo, divisor);
-
-                    remainder = (nuint)r2;
-                    return (nuint)((q_hi << 32) | q_lo);
-                }
-#pragma warning disable SYSLIB5004 // X86Base.DivRem is experimental
-                if (X86Base.X64.IsSupported)
-                {
-                    (ulong q, ulong r) = X86Base.X64.DivRem(lo, hi, divisor);
-                    remainder = (nuint)r;
-                    return (nuint)q;
-                }
-#pragma warning restore SYSLIB5004
-                else
-                {
-                    ulong q = DivRemKnuth(hi, lo, divisor, out ulong r);
-                    remainder = (nuint)r;
-                    return (nuint)q;
-                }
+                return ulong.DivRem(lo, divisor);
             }
+
+            // When divisor fits in 32 bits, split lo into two 32-bit halves
+            // and chain two native 64-bit divisions (avoids UInt128 overhead):
+            //   (hi * 2^32 + lo_hi) / divisor -> (q_hi, r1) [fits: hi < divisor < 2^32]
+            //   (r1 * 2^32 + lo_lo) / divisor -> (q_lo, r2) [fits: r1 < divisor < 2^32]
+            if (divisor <= uint.MaxValue)
+            {
+                ulong lo_hi = lo >> 32;
+                ulong lo_lo = lo & 0xFFFFFFFF;
+
+                (ulong q_hi, ulong r1) = Math.DivRem((hi << 32) | lo_hi, divisor);
+                (ulong q_lo, ulong r2) = Math.DivRem((r1 << 32) | lo_lo, divisor);
+
+                ulong q = (q_hi << 32) | q_lo;
+                return (q, r2);
+            }
+#pragma warning disable SYSLIB5004 // X86Base.DivRem is experimental
+            if (X86Base.X64.IsSupported)
+            {
+                return X86Base.X64.DivRem(lo, hi, divisor);
+            }
+#pragma warning restore SYSLIB5004
             else
             {
-                ulong value = ((ulong)hi << 32) | lo;
-                ulong digit = value / divisor;
-                remainder = (uint)(value - digit * divisor);
-                return (uint)digit;
+                ulong q = Div128BitsBy64Bits(hi, lo, divisor, out ulong r);
+                Debug.Assert(r < divisor);
+                Debug.Assert(Math.BigMul(q, divisor) + r == new UInt128(hi, lo));
+                return (q, r);
+            }
+
+            static ulong Div128BitsBy64Bits(ulong hi, ulong lo, ulong divisor, out ulong remainder)
+            {
+                // Knuth's algorithm
+                // Perform 128-bit/64-bit division by splitting it into 32-bit parts.
+                //
+                // dividend = |      hi     |      lo     |
+                //  divisor = |             |   divisor   |
+
+                int shift = BitOperations.LeadingZeroCount(divisor);
+                if (shift > 0)
+                {
+                    divisor <<= shift;
+                    hi = (hi << shift) | (lo >> (64 - shift));
+                    lo <<= shift;
+                }
+
+                uint dHi = (uint)(divisor >> 32);
+                uint dLo = (uint)divisor;
+
+                ulong quotient = Div96BitsBy64Bits(hi, (uint)(lo >> 32), dHi, dLo, out ulong rem) << 32;
+                quotient |= Div96BitsBy64Bits(rem, (uint)lo, dHi, dLo, out remainder);
+
+                Debug.Assert((remainder & (~0ul << shift)) == 0);
+                remainder >>= shift;
+
+                return quotient;
+            }
+
+            static ulong Div96BitsBy64Bits(ulong hi, uint lo, uint dHi, uint dLo, out ulong remainder)
+            {
+                // dividend = |      hi     |  lo  |
+                // dividend = |  mHi |      mLo    |
+                //  divisor = |      |  dHi |  dLo |
+                ulong mLo = (hi << 32) | lo;
+                uint mHi = (uint)(hi >> 32);
+
+                // First guess for the current digit of the quotient,
+                // which naturally must have only 32 bits...
+                ulong q = hi / dHi;
+
+                if (q > 0xFFFFFFFF)
+                {
+                    q = 0xFFFFFFFF;
+                }
+
+                // Our first guess may be a little bit to big
+                // and subtract our current quotient -> (hi:lm) -= divisor * q
+                // In the original Knuth's algorithm, `DivideGuessTooBig` is
+                // determined using only the high bits of the left and right
+                // values, which can lead to cases where `left < q * right`.
+                // However, in this 96-bit by 64-bit division, all bits are
+                // used, so that concern does not apply.
+                //
+                //  current  |  mHi |      mLo    |
+                //    -      |      |   dLo * q   |
+                //    -      |   dHi * q   |      |
+                // ---------------------------------
+                // remainder |      |      |  mi  |
+                while (DivideGuessTooBig(q, mHi, mLo, dHi, dLo, out remainder))
+                {
+                    --q;
+                }
+
+                Debug.Assert(q <= uint.MaxValue);
+                return q;
             }
         }
     }

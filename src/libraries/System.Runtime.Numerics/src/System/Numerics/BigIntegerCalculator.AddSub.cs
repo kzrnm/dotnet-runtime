@@ -44,37 +44,10 @@ namespace System.Numerics
 
             for (int i = 0; i < right.Length; i++)
             {
-                bits[i] = AddWithCarry(left[i], right[i], carry, out carry);
+                bits[i] = Number.AddWithCarry(left[i], right[i], carry, out carry);
             }
 
             Add(left, bits, startIndex: right.Length, initialCarry: carry);
-        }
-
-        public static void AddSelf(Span<nuint> left, ReadOnlySpan<nuint> right)
-        {
-            Debug.Assert(left.Length >= right.Length);
-
-            int i = 0;
-            nuint carry = 0;
-
-            if (right.Length != 0)
-            {
-                _ = left[right.Length - 1];
-            }
-
-            for (; i < right.Length; i++)
-            {
-                left[i] = AddWithCarry(left[i], right[i], carry, out carry);
-            }
-
-            for (; carry != 0 && i < left.Length; i++)
-            {
-                nuint sum = left[i] + carry;
-                carry = (sum < carry) ? 1 : (nuint)0;
-                left[i] = sum;
-            }
-
-            Debug.Assert(carry == 0);
         }
 
         public static void Subtract(ReadOnlySpan<nuint> left, nuint right, Span<nuint> bits)

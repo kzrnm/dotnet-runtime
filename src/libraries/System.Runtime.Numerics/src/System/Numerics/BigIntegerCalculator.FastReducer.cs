@@ -114,7 +114,7 @@ namespace System.Numerics
                 // until left >= right before subtracting.
                 while (CompareActual(left, right) < 0)
                 {
-                    AddSelf(left, modulus);
+                    Number.AddBigInteger(left, modulus);
                 }
 
                 SubtractSelf(left, right);

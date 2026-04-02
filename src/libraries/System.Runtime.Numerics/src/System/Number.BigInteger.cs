@@ -481,7 +481,7 @@ namespace System
 
                 Recursive(powersOf1e9, powersOf1e9Index - 1, base1E9[..multiplier1E9Length], buffer);
 
-                BigIntegerCalculator.AddSelf(bits, buffer.Slice(0, BigIntegerCalculator.ActualLength(buffer)));
+                AddBigInteger(bits, buffer.Slice(0, BigIntegerCalculator.ActualLength(buffer)));
 
                 bufferRental.Dispose();
             }

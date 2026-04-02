@@ -74,7 +74,7 @@ namespace System.Numerics
             if (right.Length < DivideBurnikelZieglerThreshold || left.Length - right.Length < DivideBurnikelZieglerThreshold)
             {
                 left.CopyTo(remainder);
-                Number.DivideGrammarSchool(remainder, right, quotient);
+                Number.DivideBigInteger(remainder, right, quotient);
             }
             else
             {
@@ -99,7 +99,7 @@ namespace System.Numerics
                 Span<nuint> leftCopy = BigInteger.RentedBuffer.Create(left.Length, out BigInteger.RentedBuffer leftCopyBuffer);
                 left.CopyTo(leftCopy);
 
-                Number.DivideGrammarSchool(leftCopy, right, quotient);
+                Number.DivideBigInteger(leftCopy, right, quotient);
 
                 leftCopyBuffer.Dispose();
             }
@@ -122,7 +122,7 @@ namespace System.Numerics
                 // Same as above, but only returning the remainder.
 
                 left.CopyTo(remainder);
-                Number.DivideGrammarSchool(remainder, right, default);
+                Number.DivideBigInteger(remainder, right, default);
             }
             else
             {
@@ -154,7 +154,7 @@ namespace System.Numerics
 
             if (right.Length < DivideBurnikelZieglerThreshold || left.Length - right.Length < DivideBurnikelZieglerThreshold)
             {
-                Number.DivideGrammarSchool(left, right, quotient);
+                Number.DivideBigInteger(left, right, quotient);
             }
             else
             {
@@ -368,7 +368,7 @@ namespace System.Numerics
                 int quotientLength = Math.Min(left.Length - right.Length + 1, quotient.Length);
 
                 quotient.Slice(quotientLength).Clear();
-                Number.DivideGrammarSchool(r1, right, quotient.Slice(0, quotientLength));
+                Number.DivideBigInteger(r1, right, quotient.Slice(0, quotientLength));
 
                 if (r1.Length < remainder.Length)
                 {
@@ -456,7 +456,7 @@ namespace System.Numerics
 
             while (CompareActual(rr, d) < 0)
             {
-                AddSelf(rr, right);
+                Number.AddBigInteger(rr, right);
                 int qi = -1;
                 while (quotient[++qi] == 0) ;
                 Debug.Assert((uint)qi < (uint)quotient.Length);
