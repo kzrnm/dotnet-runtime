@@ -256,8 +256,8 @@ namespace System
 
             if (nint.Size == 8)
             {
-                ulong chkHi = ulong.BigMul(divHi, q, out ulong chkHiLo);
-                ulong chkLoHi = ulong.BigMul(divLo, q, out ulong chkLo);
+                ulong chkHi = Math.BigMul(divHi, q, out ulong chkHiLo);
+                ulong chkLoHi = Math.BigMul(divLo, q, out ulong chkLo);
                 ulong chkMi = chkHiLo + chkLoHi;
 
                 if (chkMi < chkLoHi)

@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -513,128 +514,75 @@ namespace System
                 {
                     int quoLength = lhsLength - rhsLength + 1;
                     SetValue(out rem, ref lhs);
-                    int remLength = lhsLength;
 
-                    // Executes the "grammar-school" algorithm for computing q = a / b.
-                    // Before calculating q_i, we get more bits into the highest bit
-                    // block of the divisor. Thus, guessing digits of the quotient
-                    // will be more precise. Additionally we'll get r = a % b.
+                    Span<uint> rawLeft = rem._blocks;
+                    Span<uint> rawRight = rhs._blocks;
+                    Span<uint> rawQuo = quo._blocks;
 
-                    uint divHi = rhs._blocks[rhsLength - 1];
-                    uint divLo = rhs._blocks[rhsLength - 2];
-
-                    // We measure the leading zeros of the divisor
-                    int shiftLeft = BitOperations.LeadingZeroCount(divHi);
-                    int shiftRight = 32 - shiftLeft;
-
-                    // And, we make sure the most significant bit is set
-                    if (shiftLeft > 0)
+                    if (nint.Size == 8)
                     {
-                        divHi = (divHi << shiftLeft) | (divLo >> shiftRight);
-                        divLo <<= shiftLeft;
+                        int lhsMargin = lhsLength & 1;
+                        int rhsMargin = rhsLength & 1;
 
-                        if (rhsLength > 2)
+                        Span<uint> lhsSpan = rawLeft.Slice(0, lhsLength + lhsMargin);
+                        Span<uint> rhsSpan = rawRight.Slice(0, rhsLength + rhsMargin);
+                        if (lhsMargin != 0) { lhsSpan[lhsSpan.Length - 1] = 0; }
+                        if (rhsMargin != 0) { rhsSpan[rhsSpan.Length - 1] = 0; }
+
+                        Span<nuint> lhsSpan2 = MemoryMarshal.Cast<uint, nuint>(lhsSpan);
+                        Span<nuint> rhsSpan2 = MemoryMarshal.Cast<uint, nuint>(rhsSpan);
+                        Span<nuint> quoSpan2 = MemoryMarshal.Cast<uint, nuint>(rawQuo).Slice(0, lhsSpan2.Length - rhsSpan2.Length + 1);
+                        quoSpan2.Clear();
+
+                        if (BitConverter.IsLittleEndian)
                         {
-                            divLo |= rhs._blocks[rhsLength - 3] >> shiftRight;
-                        }
-                    }
-
-                    // Then, we divide all of the bits as we would do it using
-                    // pen and paper: guessing the next digit, subtracting, ...
-                    for (int i = lhsLength; i >= rhsLength; i--)
-                    {
-                        int n = i - rhsLength;
-                        uint t = i < lhsLength ? rem._blocks[i] : 0;
-
-                        ulong valHi = ((ulong)t << 32) | rem._blocks[i - 1];
-                        uint valLo = i > 1 ? rem._blocks[i - 2] : 0;
-
-                        // We shifted the divisor, we shift the dividend too
-                        if (shiftLeft > 0)
-                        {
-                            valHi = (valHi << shiftLeft) | (valLo >> shiftRight);
-                            valLo <<= shiftLeft;
-
-                            if (i > 2)
-                            {
-                                valLo |= rem._blocks[i - 3] >> shiftRight;
-                            }
-                        }
-
-                        // First guess for the current digit of the quotient,
-                        // which naturally must have only 32 bits...
-                        ulong digit = valHi / divHi;
-
-                        if (digit > uint.MaxValue)
-                        {
-                            digit = uint.MaxValue;
-                        }
-
-                        // Our first guess may be a little bit to big
-                        while (DivideGuessTooBig(digit, valHi, valLo, divHi, divLo))
-                        {
-                            digit--;
-                        }
-
-                        if (digit > 0)
-                        {
-                            // rem and rhs have different lifetimes here and compiler is warning
-                            // about potential for one to copy into the other. This is a place
-                            // ref scoped parameters would alleviate.
-                            // https://github.com/dotnet/roslyn/issues/64393
-#pragma warning disable CS9080
-                            // Now it's time to subtract our current quotient
-                            uint carry = SubtractDivisor(ref rem, n, ref rhs, digit);
-
-                            if (carry != t)
-                            {
-                                Debug.Assert(carry == t + 1);
-
-                                // Our guess was still exactly one too high
-                                carry = AddDivisor(ref rem, n, ref rhs);
-                                digit--;
-
-                                Debug.Assert(carry == 1);
-                            }
-#pragma warning restore CS9080
-                        }
-
-                        // We have the digit!
-                        if (quoLength != 0)
-                        {
-                            if ((digit == 0) && (n == (quoLength - 1)))
-                            {
-                                quoLength--;
-                            }
-                            else
-                            {
-                                quo._blocks[n] = (uint)digit;
-                            }
-                        }
-
-                        if (i < remLength)
-                        {
-                            remLength--;
-                        }
-                    }
-
-                    quo._length = quoLength;
-
-                    // We need to check for the case where remainder is zero
-
-                    for (int i = remLength - 1; i >= 0; i--)
-                    {
-                        if (rem._blocks[i] == 0)
-                        {
-                            remLength--;
+                            DivideBigInteger(lhsSpan2, rhsSpan2, quoSpan2);
                         }
                         else
                         {
-                            // As soon as we find a non-zero block, the rest of remainder is significant
-                            break;
+                            BinaryPrimitives.ReverseEndianness(lhsSpan2, lhsSpan2);
+                            BinaryPrimitives.ReverseEndianness(rhsSpan2, rhsSpan2);
+                            BinaryPrimitives.ReverseEndianness(quoSpan2, quoSpan2);
+
+                            DivideBigInteger(lhsSpan2, rhsSpan2, quoSpan2);
+
+                            BinaryPrimitives.ReverseEndianness(lhsSpan2, lhsSpan2);
+                            BinaryPrimitives.ReverseEndianness(rhsSpan2, rhsSpan2);
+                            BinaryPrimitives.ReverseEndianness(quoSpan2, quoSpan2);
                         }
                     }
+                    else
+                    {
+                        Span<uint> lhsSpan = rawLeft.Slice(0, lhsLength);
+                        Span<uint> rhsSpan = rawRight.Slice(0, rhsLength);
+                        Span<uint> quoSpan = rawQuo.Slice(0, quoLength);
+                        quoSpan.Clear();
+                        DivideBigInteger(
+                            Unsafe.BitCast<Span<uint>, Span<nuint>>(lhsSpan),
+                            Unsafe.BitCast<Span<uint>, Span<nuint>>(rhsSpan),
+                            Unsafe.BitCast<Span<uint>, Span<nuint>>(quoSpan));
+                    }
 
+                    for (int i = quoLength - 1; i >= 0; i--)
+                    {
+                        if (rawQuo[i] != 0)
+                        {
+                            break;
+                        }
+                        quoLength = i;
+                    }
+                    quo._length = quoLength;
+
+                    int remLength = rhsLength;
+                    Debug.Assert(!rawLeft[remLength..lhsLength].ContainsAnyExcept(0u));
+                    for (int i = remLength - 1; i >= 0; i--)
+                    {
+                        if (rawLeft[i] != 0)
+                        {
+                            break;
+                        }
+                        remLength = i;
+                    }
                     rem._length = remLength;
                 }
             }
